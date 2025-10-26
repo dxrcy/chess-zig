@@ -27,8 +27,18 @@ pub fn restoreTermios(self: *Self) !void {
     const termios = self.original_termios orelse {
         panic("tried to restore termios before saving", .{});
     };
-    try posix.tcsetattr(posix.STDIN_FILENO, .NOW, termios);
+    try self.setTermios(termios);
     self.original_termios = null;
+}
+
+// TODO: Rename or something .. misleading names!
+pub fn getTermios(self: *Self) ?posix.termios {
+    return self.original_termios;
+}
+
+pub fn setTermios(self: *Self, termios: posix.termios) !void {
+    _ = self;
+    try posix.tcsetattr(posix.STDIN_FILENO, .NOW, termios);
 }
 
 pub fn print(self: *Self, comptime fmt: []const u8, args: anytype) void {

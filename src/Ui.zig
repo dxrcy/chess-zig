@@ -105,14 +105,13 @@ pub fn enter(self: *Self) !void {
     self.terminal.setAlternativeScreen(.enter);
     self.terminal.setCursorVisibility(.hidden);
     self.terminal.clearScreen();
-    try self.terminal.saveTermios();
 
-    // TODO:
-    var termios = try posix.tcgetattr(posix.STDIN_FILENO);
+    try self.terminal.saveTermios();
+    var termios = self.terminal.getTermios() orelse unreachable;
     termios.lflag.ICANON = false;
     termios.lflag.ECHO = false;
     termios.lflag.ISIG = false;
-    try posix.tcsetattr(posix.STDIN_FILENO, .NOW, termios);
+    try self.terminal.setTermios(termios);
 }
 
 pub fn exit(self: *Self) !void {
