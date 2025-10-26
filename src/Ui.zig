@@ -5,11 +5,11 @@ const assert = std.debug.assert;
 const posix = std.posix;
 
 const Board = @import("Board.zig");
+const Terminal = @import("Terminal.zig");
 
 active: Player,
 cursor: Position,
-
-original_termios: ?posix.termios,
+terminal: Terminal,
 
 const Player = enum {
     white,
@@ -64,7 +64,7 @@ pub fn new() Self {
     return Self{
         .active = .black,
         .cursor = .{ .row = 0, .col = 2 },
-        .original_termios = null,
+        .terminal = Terminal.new(),
     };
 }
 
@@ -102,17 +102,13 @@ pub fn move(self: *Self, direction: enum { left, right, up, down }) void {
 }
 
 pub fn enter(self: *Self) !void {
-    // Enter alternative screen
-    std.debug.print("\x1b[?1049h", .{});
-    // Hide cursor
-    std.debug.print("\x1b[?25l", .{});
-    // Clear screen
-    std.debug.print("\x1b[J", .{});
+    self.terminal.setAlternativeScreen(.enter);
+    self.terminal.setCursorVisibility(.hidden);
+    self.terminal.clearScreen();
+    try self.terminal.saveTermios();
 
-    assert(self.original_termios == null);
-
+    // TODO:
     var termios = try posix.tcgetattr(posix.STDIN_FILENO);
-    self.original_termios = termios;
     termios.lflag.ICANON = false;
     termios.lflag.ECHO = false;
     termios.lflag.ISIG = false;
@@ -120,21 +116,13 @@ pub fn enter(self: *Self) !void {
 }
 
 pub fn exit(self: *Self) !void {
-    // Show cursor
-    std.debug.print("\x1b[?25h", .{});
-    // Exit alternative screen
-    std.debug.print("\x1b[?1049l", .{});
-
-    const termios = self.original_termios orelse {
-        std.debug.panic("tried to exit ui before entering", .{});
-    };
-    try posix.tcsetattr(posix.STDIN_FILENO, .NOW, termios);
-    self.original_termios = null;
+    self.terminal.setCursorVisibility(.visible);
+    self.terminal.setAlternativeScreen(.exit);
+    try self.terminal.restoreTermios();
 }
 
 pub fn render(self: *Self, board: *const Board) void {
-    // Reset cursor position
-    std.debug.print("\x1b[0;0H", .{});
+    self.terminal.setCursorPosition(1, 1);
 
     for (0..Board.SIZE) |row| {
         for (0..CELL_HEIGHT) |cell_line| {
