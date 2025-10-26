@@ -9,6 +9,23 @@ const posix = std.posix;
 stdout: fs.File,
 original_termios: ?posix.termios,
 
+pub const Style = enum(u8) {
+    bold = 1,
+    dim = 2,
+    italic = 3,
+};
+
+pub const Color = enum(u8) {
+    black = 0,
+    red = 1,
+    green = 2,
+    yellow = 3,
+    blue = 4,
+    magenta = 5,
+    cyan = 6,
+    white = 7,
+};
+
 pub fn new() Self {
     return Self{
         .stdout = fs.File.stdout(),
@@ -70,4 +87,20 @@ pub fn clearScreen(self: *Self) void {
 
 pub fn setCursorPosition(self: *Self, row: u16, col: u16) void {
     self.print("\x1b[{};{}H", .{ row, col });
+}
+
+pub fn resetStyle(self: *Self) void {
+    self.print("\x1b[0m", .{});
+}
+
+pub fn setStyle(self: *Self, style: Style) void {
+    self.print("\x1b[{d}m", .{@intFromEnum(style)});
+}
+
+pub fn setForeground(self: *Self, color: Color) void {
+    self.print("\x1b[3{d}m", .{@intFromEnum(color)});
+}
+
+pub fn setBackground(self: *Self, color: Color) void {
+    self.print("\x1b[4{d}m", .{@intFromEnum(color)});
 }

@@ -5,7 +5,9 @@ const assert = std.debug.assert;
 const posix = std.posix;
 
 const Board = @import("Board.zig");
+
 const Terminal = @import("Terminal.zig");
+const Color = Terminal.Color;
 
 active: Player,
 cursor: Position,
@@ -159,7 +161,7 @@ pub fn render(self: *Self, board: *const Board) void {
         }
     }
 
-    self.resetColor();
+    self.terminal.resetStyle();
 }
 
 fn printEmptyCellLine(
@@ -214,30 +216,26 @@ fn printSide(
 fn setColor(self: *Self, row: usize, col: usize) void {
     const is_even = (row + col) % 2 == 0;
 
-    const fg = colors.FOREGROUND +
+    const fg: Color =
         if (self.atCursor(row, col))
             (if (self.active == .black)
-                colors.RED
+                .red
             else
-                colors.BLUE)
+                .blue)
         else if (is_even)
-            colors.BLACK
+            .black
         else
-            colors.WHITE;
+            .white;
 
-    const bg = colors.BACKGROUND +
+    const bg: Color =
         if (is_even)
-            colors.WHITE
+            .white
         else
-            colors.BLACK;
+            .black;
 
-    self.terminal.print("\x1b[{}m", .{styles.BOLD});
-    self.terminal.print("\x1b[{d}m", .{fg});
-    self.terminal.print("\x1b[{d}m", .{bg});
-}
-
-fn resetColor(self: *Self) void {
-    self.terminal.print("\x1b[0m", .{});
+    self.terminal.setStyle(.bold);
+    self.terminal.setForeground(fg);
+    self.terminal.setBackground(bg);
 }
 
 fn atCursor(self: *const Self, row: usize, col: usize) bool {
