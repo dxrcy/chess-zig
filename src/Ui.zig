@@ -106,7 +106,8 @@ pub fn move(self: *Self, direction: enum { left, right, up, down }) void {
 pub fn enter(self: *Self) !void {
     self.terminal.setAlternativeScreen(.enter);
     self.terminal.setCursorVisibility(.hidden);
-    self.terminal.clearScreen();
+    self.terminal.clearEntireScreen();
+    self.terminal.flush();
 
     try self.terminal.saveTermios();
     var termios = self.terminal.getTermios() orelse unreachable;
@@ -119,6 +120,8 @@ pub fn enter(self: *Self) !void {
 pub fn exit(self: *Self) !void {
     self.terminal.setCursorVisibility(.visible);
     self.terminal.setAlternativeScreen(.exit);
+    self.terminal.flush();
+
     try self.terminal.restoreTermios();
 }
 
@@ -157,11 +160,12 @@ pub fn render(self: *Self, board: *const Board) void {
                 self.printSide(row, col, .right);
             }
 
-            self.terminal.print("\n", .{});
+            self.terminal.print("\r\n", .{});
         }
     }
 
     self.terminal.resetStyle();
+    self.terminal.flush();
 }
 
 fn printEmptyCellLine(

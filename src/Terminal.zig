@@ -2,11 +2,27 @@ const Self = @This();
 
 const std = @import("std");
 const assert = std.debug.assert;
-const fs = std.fs;
 const panic = std.debug.panic;
 const posix = std.posix;
 
-stdout: fs.File,
+const stdout = struct {
+    const fs = std.fs;
+
+    const BUFFER_SIZE = 1024;
+
+    const FILE = fs.File.stdout();
+    var WRITER: ?fs.File.Writer = null;
+    var BUFFER: [BUFFER_SIZE]u8 = undefined;
+
+    /// Lazily initializes global writer.
+    pub fn writer() *fs.File.Writer {
+        if (WRITER == null) {
+            WRITER = FILE.writer(&BUFFER);
+        }
+        return &(WRITER orelse unreachable);
+    }
+};
+
 original_termios: ?posix.termios,
 
 pub const Style = enum(u8) {
@@ -28,7 +44,6 @@ pub const Color = enum(u8) {
 
 pub fn new() Self {
     return Self{
-        .stdout = fs.File.stdout(),
         .original_termios = null,
     };
 }
@@ -59,12 +74,15 @@ pub fn setTermios(self: *Self, termios: posix.termios) !void {
 }
 
 pub fn print(self: *Self, comptime fmt: []const u8, args: anytype) void {
-    var buffer: [1]u8 = undefined;
-    var writer = self.stdout.writer(&buffer);
-    writer.interface.print(fmt, args) catch |err| {
+    _ = self;
+    stdout.writer().interface.print(fmt, args) catch |err| {
         panic("failed to write to stdout: {}", .{err});
     };
-    writer.interface.flush() catch |err| {
+}
+
+pub fn flush(self: *Self) void {
+    _ = self;
+    stdout.writer().interface.flush() catch |err| {
         panic("failed to flush stdout: {}", .{err});
     };
 }
@@ -81,8 +99,8 @@ pub fn setCursorVisibility(self: *Self, state: enum { visible, hidden }) void {
     });
 }
 
-pub fn clearScreen(self: *Self) void {
-    self.print("\x1b[J", .{});
+pub fn clearEntireScreen(self: *Self) void {
+    self.print("\x1b[2J", .{});
 }
 
 pub fn setCursorPosition(self: *Self, row: u16, col: u16) void {
