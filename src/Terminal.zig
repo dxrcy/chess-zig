@@ -2,51 +2,62 @@ const Self = @This();
 
 const std = @import("std");
 const assert = std.debug.assert;
+const fs = std.fs;
+const panic = std.debug.panic;
 const posix = std.posix;
 
+stdout: fs.File,
 original_termios: ?posix.termios,
 
 pub fn new() Self {
     return Self{
+        .stdout = fs.File.stdout(),
         .original_termios = null,
     };
 }
 
 pub fn saveTermios(self: *Self) !void {
     if (self.original_termios != null) {
-        std.debug.panic("tried to save termios twice", .{});
+        panic("tried to save termios twice", .{});
     }
     self.original_termios = try posix.tcgetattr(posix.STDIN_FILENO);
 }
 
 pub fn restoreTermios(self: *Self) !void {
     const termios = self.original_termios orelse {
-        std.debug.panic("tried to restore termios before saving", .{});
+        panic("tried to restore termios before saving", .{});
     };
     try posix.tcsetattr(posix.STDIN_FILENO, .NOW, termios);
     self.original_termios = null;
 }
 
+pub fn print(self: *Self, comptime fmt: []const u8, args: anytype) void {
+    var buffer: [1]u8 = undefined;
+    var writer = self.stdout.writer(&buffer);
+    writer.interface.print(fmt, args) catch |err| {
+        panic("failed to write to stdout: {}", .{err});
+    };
+    writer.interface.flush() catch |err| {
+        panic("failed to flush stdout: {}", .{err});
+    };
+}
+
 pub fn setAlternativeScreen(self: *Self, state: enum { enter, exit }) void {
-    _ = self;
-    std.debug.print("\x1b[?1049{c}", .{
+    self.print("\x1b[?1049{c}", .{
         @as(u8, if (state == .enter) 'h' else 'l'),
     });
 }
 
 pub fn setCursorVisibility(self: *Self, state: enum { visible, hidden }) void {
-    _ = self;
-    std.debug.print("\x1b[?25{c}", .{
+    self.print("\x1b[?25{c}", .{
         @as(u8, if (state == .visible) 'h' else 'l'),
     });
 }
 
 pub fn clearScreen(self: *Self) void {
-    _ = self;
-    std.debug.print("\x1b[J", .{});
+    self.print("\x1b[J", .{});
 }
 
 pub fn setCursorPosition(self: *Self, row: u16, col: u16) void {
-    _ = self;
-    std.debug.print("\x1b[{};{}H", .{ row, col });
+    self.print("\x1b[{};{}H", .{ row, col });
 }

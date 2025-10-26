@@ -152,11 +152,11 @@ pub fn render(self: *Self, board: *const Board) void {
                 const string = piece.string()[piece_line * PIECE_LENGTH ..][0..PIECE_LENGTH];
 
                 self.printSide(row, col, .left);
-                std.debug.print("{s}", .{string});
+                self.terminal.print("{s}", .{string});
                 self.printSide(row, col, .right);
             }
 
-            std.debug.print("\n", .{});
+            self.terminal.print("\n", .{});
         }
     }
 
@@ -171,7 +171,7 @@ fn printEmptyCellLine(
 ) void {
     if (side == .middle) {
         self.printSide(row, col, .left);
-        std.debug.print(" " ** PIECE_LENGTH, .{});
+        self.terminal.print(" " ** PIECE_LENGTH, .{});
         self.printSide(row, col, .right);
         return;
     }
@@ -188,7 +188,7 @@ fn printEmptyCellLine(
                 edges.BOTTOM ** (CELL_LENGTH - 2) ++
                 edges.BOTTOM_RIGHT;
 
-    std.debug.print("{s}", .{string});
+    self.terminal.print("{s}", .{string});
 }
 
 fn printSide(
@@ -209,7 +209,7 @@ fn printSide(
             else
                 " " ** (PADDING_RIGHT - 1) ++ edges.RIGHT);
 
-    std.debug.print("{s}", .{string});
+    self.terminal.print("{s}", .{string});
 }
 
 fn setColor(self: *Self, row: usize, col: usize) void {
@@ -232,14 +232,13 @@ fn setColor(self: *Self, row: usize, col: usize) void {
         else
             colors.BLACK;
 
-    std.debug.print("\x1b[{}m", .{styles.BOLD});
-    std.debug.print("\x1b[{d}m", .{fg});
-    std.debug.print("\x1b[{d}m", .{bg});
+    self.terminal.print("\x1b[{}m", .{styles.BOLD});
+    self.terminal.print("\x1b[{d}m", .{fg});
+    self.terminal.print("\x1b[{d}m", .{bg});
 }
 
 fn resetColor(self: *Self) void {
-    _ = self;
-    std.debug.print("\x1b[0m", .{});
+    self.terminal.print("\x1b[0m", .{});
 }
 
 fn atCursor(self: *const Self, row: usize, col: usize) bool {
