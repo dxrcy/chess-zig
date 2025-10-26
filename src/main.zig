@@ -8,7 +8,9 @@ const State = @import("State.zig");
 const Ui = @import("Ui.zig");
 
 pub fn main() !void {
-    var ui = Ui.new();
+    const ascii = false;
+
+    var ui = Ui.new(ascii);
     try ui.enter();
     // Restore terminal, if anything goes wrong
     errdefer ui.exit() catch unreachable;

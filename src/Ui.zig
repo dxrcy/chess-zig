@@ -12,6 +12,7 @@ const Terminal = @import("Terminal.zig");
 const Color = Terminal.Color;
 
 terminal: Terminal,
+ascii: bool,
 
 const PIECE_LENGTH: usize = 3;
 const PIECE_HEIGHT: usize = 3;
@@ -24,20 +25,24 @@ const PADDING_BOTTOM: usize = 1;
 const CELL_LENGTH: usize = PIECE_LENGTH + PADDING_LEFT + PADDING_RIGHT;
 const CELL_HEIGHT: usize = PIECE_HEIGHT + PADDING_TOP + PADDING_BOTTOM;
 
-const edges = struct {
-    const LEFT = "▌";
-    const RIGHT = "▐";
-    const TOP = "🬂";
-    const BOTTOM = "🬭";
-    const TOP_LEFT = "🬕";
-    const TOP_RIGHT = "🬨";
-    const BOTTOM_LEFT = "🬲";
-    const BOTTOM_RIGHT = "🬷";
+const Edge = enum {
+    left,
+    right,
+    top,
+    bottom,
+    top_left,
+    top_right,
+    bottom_left,
+    bottom_right,
+
+    /// Character count (not bytes) of any edge character.
+    const LENGTH = 1;
 };
 
-pub fn new() Self {
+pub fn new(ascii: bool) Self {
     return Self{
         .terminal = Terminal.new(),
+        .ascii = ascii,
     };
 }
 
@@ -66,12 +71,12 @@ pub fn exit(self: *Self) !void {
 pub fn render(self: *Self, state: *const State) void {
     self.terminal.setCursorPosition(1, 1);
 
+    const PIECE_START = PADDING_TOP;
+    const PIECE_END = PADDING_TOP + PIECE_LENGTH - 1;
+
     for (0..Board.SIZE) |row| {
         for (0..CELL_HEIGHT) |cell_line| {
             for (0..Board.SIZE) |col| {
-                const PIECE_START = PADDING_TOP;
-                const PIECE_END = PADDING_TOP + PIECE_LENGTH - 1;
-
                 const position = Position{ .row = row, .col = col };
 
                 self.setColor(state, position);
@@ -121,19 +126,21 @@ fn printEmptyCellLine(
         return;
     }
 
-    const string =
-        if (!position.eql(state.cursor))
-            " " ** CELL_LENGTH
-        else if (side == .top)
-            edges.TOP_LEFT ++
-                edges.TOP ** (CELL_LENGTH - 2) ++
-                edges.TOP_RIGHT
-        else
-            edges.BOTTOM_LEFT ++
-                edges.BOTTOM ** (CELL_LENGTH - 2) ++
-                edges.BOTTOM_RIGHT;
-
-    self.terminal.print("{s}", .{string});
+    if (!position.eql(state.cursor)) {
+        self.terminal.print(" " ** CELL_LENGTH, .{});
+    } else if (side == .top) {
+        self.terminal.print("{s}", .{self.getEdge(.top_left)});
+        for (0..CELL_LENGTH - Edge.LENGTH * 2) |_| {
+            self.terminal.print("{s}", .{self.getEdge(.top)});
+        }
+        self.terminal.print("{s}", .{self.getEdge(.top_right)});
+    } else {
+        self.terminal.print("{s}", .{self.getEdge(.bottom_left)});
+        for (0..CELL_LENGTH - Edge.LENGTH * 2) |_| {
+            self.terminal.print("{s}", .{self.getEdge(.bottom)});
+        }
+        self.terminal.print("{s}", .{self.getEdge(.bottom_right)});
+    }
 }
 
 fn printSide(
@@ -142,19 +149,43 @@ fn printSide(
     position: Position,
     side: enum { left, right },
 ) void {
-    const string =
-        if (!position.eql(state.cursor))
-            (if (side == .left)
-                " " ** PADDING_LEFT
-            else
-                " " ** PADDING_RIGHT)
-        else
-            (if (side == .left)
-                edges.LEFT ++ " " ** (PADDING_LEFT - 1)
-            else
-                " " ** (PADDING_RIGHT - 1) ++ edges.RIGHT);
+    if (!position.eql(state.cursor)) {
+        if (side == .left) {
+            self.terminal.print(" " ** PADDING_LEFT, .{});
+        } else {
+            self.terminal.print(" " ** PADDING_RIGHT, .{});
+        }
+    } else {
+        if (side == .left) {
+            self.terminal.print("{s}", .{self.getEdge(.left)});
+            self.terminal.print(" " ** (PADDING_LEFT - Edge.LENGTH), .{});
+        } else {
+            self.terminal.print(" " ** (PADDING_RIGHT - Edge.LENGTH), .{});
+            self.terminal.print("{s}", .{self.getEdge(.right)});
+        }
+    }
+}
 
-    self.terminal.print("{s}", .{string});
+pub fn getEdge(self: *const Self, edge: Edge) []const u8 {
+    return if (self.ascii) switch (edge) {
+        .left => "|",
+        .right => "|",
+        .top => "-",
+        .bottom => "-",
+        .top_left => ",",
+        .top_right => ",",
+        .bottom_left => "'",
+        .bottom_right => "'",
+    } else switch (edge) {
+        .left => "▌",
+        .right => "▐",
+        .top => "🬂",
+        .bottom => "🬭",
+        .top_left => "🬕",
+        .top_right => "🬨",
+        .bottom_left => "🬲",
+        .bottom_right => "🬷",
+    };
 }
 
 fn setColor(self: *Self, state: *const State, position: Position) void {
