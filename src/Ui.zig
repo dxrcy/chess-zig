@@ -1,11 +1,15 @@
 const Self = @This();
 
 const std = @import("std");
+const assert = std.debug.assert;
+const posix = std.posix;
 
 const Board = @import("Board.zig");
 
 active: Player,
 cursor: Position,
+
+original_termios: ?posix.termios,
 
 const Player = enum {
     white,
@@ -56,8 +60,81 @@ const edges = struct {
     const BOTTOM_RIGHT = "🬷";
 };
 
+pub fn new() Self {
+    return Self{
+        .active = .black,
+        .cursor = .{ .row = 0, .col = 2 },
+        .original_termios = null,
+    };
+}
+
+pub fn move(self: *Self, direction: enum { left, right, up, down }) void {
+    switch (direction) {
+        .left => {
+            if (self.cursor.col == 0) {
+                self.cursor.col = Board.SIZE - 1;
+            } else {
+                self.cursor.col -= 1;
+            }
+        },
+        .right => {
+            if (self.cursor.col >= Board.SIZE - 1) {
+                self.cursor.col = 0;
+            } else {
+                self.cursor.col += 1;
+            }
+        },
+        .up => {
+            if (self.cursor.row == 0) {
+                self.cursor.row = Board.SIZE - 1;
+            } else {
+                self.cursor.row -= 1;
+            }
+        },
+        .down => {
+            if (self.cursor.row >= Board.SIZE - 1) {
+                self.cursor.row = 0;
+            } else {
+                self.cursor.row += 1;
+            }
+        },
+    }
+}
+
+pub fn enter(self: *Self) !void {
+    // Enter alternative screen
+    std.debug.print("\x1b[?1049h", .{});
+    // Hide cursor
+    std.debug.print("\x1b[?25l", .{});
+    // Clear screen
+    std.debug.print("\x1b[J", .{});
+
+    assert(self.original_termios == null);
+
+    var termios = try posix.tcgetattr(posix.STDIN_FILENO);
+    self.original_termios = termios;
+    termios.lflag.ICANON = false;
+    termios.lflag.ECHO = false;
+    termios.lflag.ISIG = false;
+    try posix.tcsetattr(posix.STDIN_FILENO, .NOW, termios);
+}
+
+pub fn exit(self: *Self) !void {
+    // Show cursor
+    std.debug.print("\x1b[?25h", .{});
+    // Exit alternative screen
+    std.debug.print("\x1b[?1049l", .{});
+
+    const termios = self.original_termios orelse {
+        std.debug.panic("tried to exit ui before entering", .{});
+    };
+    try posix.tcsetattr(posix.STDIN_FILENO, .NOW, termios);
+    self.original_termios = null;
+}
+
 pub fn render(self: *Self, board: *const Board) void {
-    self.clearScreen();
+    // Reset cursor position
+    std.debug.print("\x1b[0;0H", .{});
 
     for (0..Board.SIZE) |row| {
         for (0..CELL_HEIGHT) |cell_line| {
@@ -145,11 +222,6 @@ fn printSide(
                 " " ** (PADDING_RIGHT - 1) ++ edges.RIGHT);
 
     std.debug.print("{s}", .{string});
-}
-
-fn clearScreen(self: *Self) void {
-    _ = self;
-    std.debug.print("\x1b[0;0H\x1b[J", .{});
 }
 
 fn setColor(self: *Self, row: usize, col: usize) void {

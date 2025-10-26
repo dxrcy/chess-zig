@@ -1,23 +1,45 @@
 const std = @import("std");
 const assert = std.debug.assert;
+const fs = std.fs;
+const posix = std.posix;
 
 const Board = @import("Board.zig");
 const Ui = @import("Ui.zig");
 
 pub fn main() !void {
+    var ui = Ui.new();
+    try ui.enter();
+    // Restore terminal, if anything goes wrong
+    errdefer ui.exit() catch unreachable;
+
+    var stdin = fs.File.stdin();
+
     const board = Board.new();
 
-    var ui = Ui{
-        .active = .black,
-        .cursor = .{ .row = 0, .col = 2 },
-    };
-
     while (true) {
-        ui.cursor.row = (ui.cursor.row + 1) % Board.SIZE;
-        ui.active = if (ui.cursor.row > 3) .black else .white;
-
         ui.render(&board);
 
-        std.Thread.sleep(500 * std.time.ns_per_ms);
+        var buffer: [1]u8 = undefined;
+        const bytes_read = try stdin.read(&buffer);
+        if (bytes_read < 1) {
+            break;
+        }
+
+        switch (buffer[0]) {
+            0x03 => break,
+
+            'h' => ui.move(.left),
+            'l' => ui.move(.right),
+            'k' => ui.move(.up),
+            'j' => ui.move(.down),
+
+            0x20 => {
+                ui.active = if (ui.active == .black) .white else .black;
+            },
+
+            else => {},
+        }
     }
+
+    try ui.exit();
 }
