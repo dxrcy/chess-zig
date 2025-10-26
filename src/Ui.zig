@@ -4,23 +4,14 @@ const std = @import("std");
 const assert = std.debug.assert;
 const posix = std.posix;
 
-const Board = @import("Board.zig");
+const State = @import("State.zig");
+const Board = State.Board;
+const Position = State.Position;
 
 const Terminal = @import("Terminal.zig");
 const Color = Terminal.Color;
 
-active: Player,
-cursor: Position,
 terminal: Terminal,
-
-const Player = enum {
-    white,
-    black,
-};
-const Position = struct {
-    row: usize,
-    col: usize,
-};
 
 const PIECE_LENGTH: usize = 3;
 const PIECE_HEIGHT: usize = 3;
@@ -32,24 +23,6 @@ const PADDING_BOTTOM: usize = 1;
 
 const CELL_LENGTH: usize = PIECE_LENGTH + PADDING_LEFT + PADDING_RIGHT;
 const CELL_HEIGHT: usize = PIECE_HEIGHT + PADDING_TOP + PADDING_BOTTOM;
-
-const styles = struct {
-    const BOLD: u8 = 1;
-};
-
-const colors = struct {
-    const FOREGROUND: u8 = 30;
-    const BACKGROUND: u8 = 40;
-
-    const BLACK: u8 = 0;
-    const RED: u8 = 1;
-    const GREEN: u8 = 2;
-    const YELLOW: u8 = 3;
-    const BLUE: u8 = 4;
-    const MAGENTA: u8 = 5;
-    const CYAN: u8 = 6;
-    const WHITE: u8 = 7;
-};
 
 const edges = struct {
     const LEFT = "▌";
@@ -64,43 +37,8 @@ const edges = struct {
 
 pub fn new() Self {
     return Self{
-        .active = .black,
-        .cursor = .{ .row = 0, .col = 2 },
         .terminal = Terminal.new(),
     };
-}
-
-pub fn move(self: *Self, direction: enum { left, right, up, down }) void {
-    switch (direction) {
-        .left => {
-            if (self.cursor.col == 0) {
-                self.cursor.col = Board.SIZE - 1;
-            } else {
-                self.cursor.col -= 1;
-            }
-        },
-        .right => {
-            if (self.cursor.col >= Board.SIZE - 1) {
-                self.cursor.col = 0;
-            } else {
-                self.cursor.col += 1;
-            }
-        },
-        .up => {
-            if (self.cursor.row == 0) {
-                self.cursor.row = Board.SIZE - 1;
-            } else {
-                self.cursor.row -= 1;
-            }
-        },
-        .down => {
-            if (self.cursor.row >= Board.SIZE - 1) {
-                self.cursor.row = 0;
-            } else {
-                self.cursor.row += 1;
-            }
-        },
-    }
 }
 
 pub fn enter(self: *Self) !void {
@@ -125,7 +63,7 @@ pub fn exit(self: *Self) !void {
     try self.terminal.restoreTermios();
 }
 
-pub fn render(self: *Self, board: *const Board) void {
+pub fn render(self: *Self, state: *const State) void {
     self.terminal.setCursorPosition(1, 1);
 
     for (0..Board.SIZE) |row| {
@@ -134,30 +72,32 @@ pub fn render(self: *Self, board: *const Board) void {
                 const PIECE_START = PADDING_TOP;
                 const PIECE_END = PADDING_TOP + PIECE_LENGTH - 1;
 
-                self.setColor(row, col);
+                const position = Position{ .row = row, .col = col };
+
+                self.setColor(state, position);
 
                 if (cell_line < PIECE_START or cell_line > PIECE_END) {
                     if (cell_line == 0) {
-                        self.printEmptyCellLine(row, col, .top);
+                        self.printEmptyCellLine(state, position, .top);
                     } else if (cell_line == CELL_HEIGHT - 1) {
-                        self.printEmptyCellLine(row, col, .bottom);
+                        self.printEmptyCellLine(state, position, .bottom);
                     } else {
-                        self.printEmptyCellLine(row, col, .middle);
+                        self.printEmptyCellLine(state, position, .middle);
                     }
                     continue;
                 }
 
-                const piece = board.get(row, col) orelse {
-                    self.printEmptyCellLine(row, col, .middle);
+                const piece = state.board.get(row, col) orelse {
+                    self.printEmptyCellLine(state, position, .middle);
                     continue;
                 };
 
                 const piece_line = cell_line - PIECE_START;
                 const string = piece.string()[piece_line * PIECE_LENGTH ..][0..PIECE_LENGTH];
 
-                self.printSide(row, col, .left);
+                self.printSide(state, position, .left);
                 self.terminal.print("{s}", .{string});
-                self.printSide(row, col, .right);
+                self.printSide(state, position, .right);
             }
 
             self.terminal.print("\r\n", .{});
@@ -170,19 +110,19 @@ pub fn render(self: *Self, board: *const Board) void {
 
 fn printEmptyCellLine(
     self: *Self,
-    row: usize,
-    col: usize,
+    state: *const State,
+    position: Position,
     side: enum { top, bottom, middle },
 ) void {
     if (side == .middle) {
-        self.printSide(row, col, .left);
+        self.printSide(state, position, .left);
         self.terminal.print(" " ** PIECE_LENGTH, .{});
-        self.printSide(row, col, .right);
+        self.printSide(state, position, .right);
         return;
     }
 
     const string =
-        if (!self.atCursor(row, col))
+        if (!position.eql(state.cursor))
             " " ** CELL_LENGTH
         else if (side == .top)
             edges.TOP_LEFT ++
@@ -198,12 +138,12 @@ fn printEmptyCellLine(
 
 fn printSide(
     self: *Self,
-    row: usize,
-    col: usize,
+    state: *const State,
+    position: Position,
     side: enum { left, right },
 ) void {
     const string =
-        if (!self.atCursor(row, col))
+        if (!position.eql(state.cursor))
             (if (side == .left)
                 " " ** PADDING_LEFT
             else
@@ -217,12 +157,12 @@ fn printSide(
     self.terminal.print("{s}", .{string});
 }
 
-fn setColor(self: *Self, row: usize, col: usize) void {
-    const is_even = (row + col) % 2 == 0;
+fn setColor(self: *Self, state: *const State, position: Position) void {
+    const is_even = (position.row + position.col) % 2 == 0;
 
     const fg: Color =
-        if (self.atCursor(row, col))
-            (if (self.active == .black)
+        if (position.eql(state.cursor))
+            (if (state.active == .black)
                 .red
             else
                 .blue)
@@ -240,8 +180,4 @@ fn setColor(self: *Self, row: usize, col: usize) void {
     self.terminal.setStyle(.bold);
     self.terminal.setForeground(fg);
     self.terminal.setBackground(bg);
-}
-
-fn atCursor(self: *const Self, row: usize, col: usize) bool {
-    return self.cursor.row == row and self.cursor.col == col;
 }
