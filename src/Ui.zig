@@ -12,8 +12,63 @@ const Terminal = @import("Terminal.zig");
 const Color = Terminal.Color;
 
 terminal: Terminal,
+frame: Frame,
 ascii: bool,
 
+const Frame = struct {
+    // TODO: Use larger size
+    const HEIGHT = Board.SIZE * CELL_HEIGHT;
+    const LENGTH = Board.SIZE * CELL_LENGTH;
+
+    cells: [HEIGHT * LENGTH]Cell,
+
+    // TODO: Use `u21` ?
+    const Char = []const u8;
+
+    // TODO: Make more comprehensive
+    const Cell = struct {
+        // TODO: Support UTF-8
+        char: Char,
+        fg: Color,
+        bg: Color,
+        bold: bool,
+    };
+
+    const CellOptions = struct {
+        char: ?Char = null,
+        fg: ?Color = null,
+        bg: ?Color = null,
+        bold: ?bool = null,
+    };
+
+    // TODO: Set attributes separately
+    pub fn set(
+        self: *Frame,
+        y: usize,
+        x: usize,
+        options: CellOptions,
+    ) void {
+        var cell = &self.cells[y * LENGTH + x];
+        if (options.char) |char| {
+            cell.char = char;
+        }
+        if (options.fg) |fg| {
+            cell.fg = fg;
+        }
+        if (options.bg) |bg| {
+            cell.bg = bg;
+        }
+        if (options.bold) |bold| {
+            cell.bold = bold;
+        }
+    }
+
+    pub fn get(self: *Frame, y: usize, x: usize) Cell {
+        return self.cells[y * LENGTH + x];
+    }
+};
+
+// TODO: Rename "*_LENGTH" -> "*_WIDTH"
 const PIECE_LENGTH: usize = 3;
 const PIECE_HEIGHT: usize = 3;
 
@@ -40,10 +95,22 @@ const Edge = enum {
 };
 
 pub fn new(ascii: bool) Self {
-    return Self{
+    var self = Self{
         .terminal = Terminal.new(),
         .ascii = ascii,
+        .frame = undefined,
     };
+    for (0..Frame.HEIGHT) |y| {
+        for (0..Frame.LENGTH) |x| {
+            self.frame.set(y, x, .{
+                .char = " ",
+                .fg = .white,
+                .bg = .black,
+                .bold = false,
+            });
+        }
+    }
+    return self;
 }
 
 pub fn enter(self: *Self) !void {
@@ -71,99 +138,108 @@ pub fn exit(self: *Self) !void {
 pub fn render(self: *Self, state: *const State) void {
     self.terminal.setCursorPosition(1, 1);
 
-    const PIECE_START = PADDING_TOP;
-    const PIECE_END = PADDING_TOP + PIECE_LENGTH - 1;
-
     for (0..Board.SIZE) |row| {
-        for (0..CELL_HEIGHT) |cell_line| {
-            for (0..Board.SIZE) |col| {
-                const position = Position{ .row = row, .col = col };
+        for (0..Board.SIZE) |col| {
+            const is_even = (row + col) % 2 == 0;
+            const bg: Color = if (is_even) .black else .white;
 
-                self.setColor(state, position);
-
-                if (cell_line < PIECE_START or cell_line > PIECE_END) {
-                    if (cell_line == 0) {
-                        self.printEmptyCellLine(state, position, .top);
-                    } else if (cell_line == CELL_HEIGHT - 1) {
-                        self.printEmptyCellLine(state, position, .bottom);
-                    } else {
-                        self.printEmptyCellLine(state, position, .middle);
-                    }
-                    continue;
+            for (0..CELL_HEIGHT) |y| {
+                for (0..CELL_LENGTH) |x| {
+                    self.frame.set(
+                        row * CELL_HEIGHT + y,
+                        col * CELL_LENGTH + x,
+                        .{ .char = " ", .bg = bg },
+                    );
                 }
-
-                const piece = state.board.get(row, col) orelse {
-                    self.printEmptyCellLine(state, position, .middle);
-                    continue;
-                };
-
-                const piece_line = cell_line - PIECE_START;
-                const string = piece.string()[piece_line * PIECE_LENGTH ..][0..PIECE_LENGTH];
-
-                self.printSide(state, position, .left);
-                self.terminal.print("{s}", .{string});
-                self.printSide(state, position, .right);
             }
 
-            self.terminal.print("\r\n", .{});
+            if (state.board.get(row, col)) |piece| {
+                const string = piece.string();
+
+                for (0..PIECE_HEIGHT) |y| {
+                    for (0..PIECE_LENGTH) |x| {
+                        const char = string[y * PIECE_HEIGHT + x ..][0..1];
+
+                        self.frame.set(
+                            row * CELL_HEIGHT + y + PADDING_TOP,
+                            col * CELL_LENGTH + x + PADDING_LEFT,
+                            .{ .char = char, .fg = .green, .bold = true },
+                        );
+                    }
+                }
+            }
         }
+    }
+
+    const cursor_fg: Color = if (state.active == .white) .blue else .red;
+
+    for (1..CELL_LENGTH - 1) |x| {
+        self.frame.set(
+            state.cursor.row * CELL_HEIGHT,
+            state.cursor.col * CELL_LENGTH + x,
+            .{ .fg = cursor_fg, .char = self.getEdge(.top) },
+        );
+    }
+    for (1..CELL_LENGTH - 1) |x| {
+        self.frame.set(
+            state.cursor.row * CELL_HEIGHT + CELL_HEIGHT - 1,
+            state.cursor.col * CELL_LENGTH + x,
+            .{ .fg = cursor_fg, .char = self.getEdge(.bottom) },
+        );
+    }
+    for (1..CELL_HEIGHT - 1) |y| {
+        self.frame.set(
+            state.cursor.row * CELL_HEIGHT + y,
+            state.cursor.col * CELL_LENGTH,
+            .{ .fg = cursor_fg, .char = self.getEdge(.left) },
+        );
+    }
+    for (1..CELL_HEIGHT - 1) |y| {
+        self.frame.set(
+            state.cursor.row * CELL_HEIGHT + y,
+            state.cursor.col * CELL_LENGTH + CELL_LENGTH - 1,
+            .{ .fg = cursor_fg, .char = self.getEdge(.right) },
+        );
+    }
+    self.frame.set(
+        state.cursor.row * CELL_HEIGHT,
+        state.cursor.col * CELL_LENGTH,
+        .{ .fg = cursor_fg, .char = self.getEdge(.top_left) },
+    );
+    self.frame.set(
+        state.cursor.row * CELL_HEIGHT,
+        state.cursor.col * CELL_LENGTH + CELL_LENGTH - 1,
+        .{ .fg = cursor_fg, .char = self.getEdge(.top_right) },
+    );
+    self.frame.set(
+        state.cursor.row * CELL_HEIGHT + CELL_HEIGHT - 1,
+        state.cursor.col * CELL_LENGTH,
+        .{ .fg = cursor_fg, .char = self.getEdge(.bottom_left) },
+    );
+    self.frame.set(
+        state.cursor.row * CELL_HEIGHT + CELL_HEIGHT - 1,
+        state.cursor.col * CELL_LENGTH + CELL_LENGTH - 1,
+        .{ .fg = cursor_fg, .char = self.getEdge(.bottom_right) },
+    );
+
+    // PERF: Only update cells which changed from last frame
+    for (0..Frame.HEIGHT) |y| {
+        for (0..Frame.LENGTH) |x| {
+            const cell = self.frame.get(y, x);
+            // PERF: Only set attributes if changed from previous cell
+            self.terminal.resetStyle();
+            if (cell.bold) {
+                self.terminal.setStyle(.bold);
+            }
+            self.terminal.setForeground(cell.fg);
+            self.terminal.setBackground(cell.bg);
+            self.terminal.print("{s}", .{cell.char});
+        }
+        self.terminal.print("\r\n", .{});
     }
 
     self.terminal.resetStyle();
     self.terminal.flush();
-}
-
-fn printEmptyCellLine(
-    self: *Self,
-    state: *const State,
-    position: Position,
-    side: enum { top, bottom, middle },
-) void {
-    if (side == .middle) {
-        self.printSide(state, position, .left);
-        self.terminal.print(" " ** PIECE_LENGTH, .{});
-        self.printSide(state, position, .right);
-        return;
-    }
-
-    if (!position.eql(state.cursor)) {
-        self.terminal.print(" " ** CELL_LENGTH, .{});
-    } else if (side == .top) {
-        self.terminal.print("{s}", .{self.getEdge(.top_left)});
-        for (0..CELL_LENGTH - Edge.LENGTH * 2) |_| {
-            self.terminal.print("{s}", .{self.getEdge(.top)});
-        }
-        self.terminal.print("{s}", .{self.getEdge(.top_right)});
-    } else {
-        self.terminal.print("{s}", .{self.getEdge(.bottom_left)});
-        for (0..CELL_LENGTH - Edge.LENGTH * 2) |_| {
-            self.terminal.print("{s}", .{self.getEdge(.bottom)});
-        }
-        self.terminal.print("{s}", .{self.getEdge(.bottom_right)});
-    }
-}
-
-fn printSide(
-    self: *Self,
-    state: *const State,
-    position: Position,
-    side: enum { left, right },
-) void {
-    if (!position.eql(state.cursor)) {
-        if (side == .left) {
-            self.terminal.print(" " ** PADDING_LEFT, .{});
-        } else {
-            self.terminal.print(" " ** PADDING_RIGHT, .{});
-        }
-    } else {
-        if (side == .left) {
-            self.terminal.print("{s}", .{self.getEdge(.left)});
-            self.terminal.print(" " ** (PADDING_LEFT - Edge.LENGTH), .{});
-        } else {
-            self.terminal.print(" " ** (PADDING_RIGHT - Edge.LENGTH), .{});
-            self.terminal.print("{s}", .{self.getEdge(.right)});
-        }
-    }
 }
 
 pub fn getEdge(self: *const Self, edge: Edge) []const u8 {
@@ -186,29 +262,4 @@ pub fn getEdge(self: *const Self, edge: Edge) []const u8 {
         .bottom_left => "🬲",
         .bottom_right => "🬷",
     };
-}
-
-fn setColor(self: *Self, state: *const State, position: Position) void {
-    const is_even = (position.row + position.col) % 2 == 0;
-
-    const fg: Color =
-        if (position.eql(state.cursor))
-            (if (state.active == .black)
-                .red
-            else
-                .blue)
-        else if (is_even)
-            .black
-        else
-            .white;
-
-    const bg: Color =
-        if (is_even)
-            .white
-        else
-            .black;
-
-    self.terminal.setStyle(.bold);
-    self.terminal.setForeground(fg);
-    self.terminal.setBackground(bg);
 }
