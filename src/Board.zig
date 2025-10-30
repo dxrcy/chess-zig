@@ -15,6 +15,7 @@ const Piece = enum(u8) {
     king,
     queen,
 
+    /// Returns ASCII representation of `self`.
     pub fn string(self: Piece) []const u8 {
         return switch (self) {
             .pawn =>

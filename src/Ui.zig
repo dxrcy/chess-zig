@@ -22,8 +22,7 @@ const Frame = struct {
 
     cells: [HEIGHT * LENGTH]Cell,
 
-    // TODO: Use `u21` ?
-    const Char = []const u8;
+    const Char = u21;
 
     // TODO: Make more comprehensive
     const Cell = struct {
@@ -103,7 +102,7 @@ pub fn new(ascii: bool) Self {
     for (0..Frame.HEIGHT) |y| {
         for (0..Frame.LENGTH) |x| {
             self.frame.set(y, x, .{
-                .char = " ",
+                .char = ' ',
                 .fg = .white,
                 .bg = .black,
                 .bold = false,
@@ -148,7 +147,7 @@ pub fn render(self: *Self, state: *const State) void {
                     self.frame.set(
                         row * CELL_HEIGHT + y,
                         col * CELL_LENGTH + x,
-                        .{ .char = " ", .bg = bg },
+                        .{ .char = ' ', .bg = bg },
                     );
                 }
             }
@@ -158,7 +157,7 @@ pub fn render(self: *Self, state: *const State) void {
 
                 for (0..PIECE_HEIGHT) |y| {
                     for (0..PIECE_LENGTH) |x| {
-                        const char = string[y * PIECE_HEIGHT + x ..][0..1];
+                        const char = string[y * PIECE_HEIGHT + x];
 
                         self.frame.set(
                             row * CELL_HEIGHT + y + PADDING_TOP,
@@ -233,7 +232,7 @@ pub fn render(self: *Self, state: *const State) void {
             }
             self.terminal.setForeground(cell.fg);
             self.terminal.setBackground(cell.bg);
-            self.terminal.print("{s}", .{cell.char});
+            self.terminal.print("{u}", .{cell.char});
         }
         self.terminal.print("\r\n", .{});
     }
@@ -242,24 +241,24 @@ pub fn render(self: *Self, state: *const State) void {
     self.terminal.flush();
 }
 
-pub fn getEdge(self: *const Self, edge: Edge) []const u8 {
+pub fn getEdge(self: *const Self, edge: Edge) u21 {
     return if (self.ascii) switch (edge) {
-        .left => "|",
-        .right => "|",
-        .top => "-",
-        .bottom => "-",
-        .top_left => ",",
-        .top_right => ",",
-        .bottom_left => "'",
-        .bottom_right => "'",
+        .left => '|',
+        .right => '|',
+        .top => '-',
+        .bottom => '-',
+        .top_left => ',',
+        .top_right => ',',
+        .bottom_left => '\'',
+        .bottom_right => '\'',
     } else switch (edge) {
-        .left => "▌",
-        .right => "▐",
-        .top => "🬂",
-        .bottom => "🬭",
-        .top_left => "🬕",
-        .top_right => "🬨",
-        .bottom_left => "🬲",
-        .bottom_right => "🬷",
+        .left => '▌',
+        .right => '▐',
+        .top => '🬂',
+        .bottom => '🬭',
+        .top_left => '🬕',
+        .top_right => '🬨',
+        .bottom_left => '🬲',
+        .bottom_right => '🬷',
     };
 }
