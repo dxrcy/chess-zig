@@ -21,6 +21,7 @@ pub fn main() !void {
 
     while (true) {
         ui.render(&state);
+        ui.draw();
 
         var buffer: [1]u8 = undefined;
         const bytes_read = try stdin.read(&buffer);

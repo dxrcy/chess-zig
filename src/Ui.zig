@@ -6,78 +6,27 @@ const posix = std.posix;
 
 const State = @import("State.zig");
 const Board = State.Board;
+const Piece = State.Board.Piece;
 const Position = State.Position;
 
 const Terminal = @import("Terminal.zig");
 const Color = Terminal.Color;
 
+const Frame = @import("Frame.zig");
+
 terminal: Terminal,
 frame: Frame,
 ascii: bool,
 
-const Frame = struct {
-    // TODO: Use larger size
-    const HEIGHT = Board.SIZE * CELL_HEIGHT;
-    const LENGTH = Board.SIZE * CELL_LENGTH;
+pub const dims = struct {
+    pub const CELL_WIDTH: usize = Piece.WIDTH + PADDING_LEFT + PADDING_RIGHT;
+    pub const CELL_HEIGHT: usize = Piece.HEIGHT + PADDING_TOP + PADDING_BOTTOM;
 
-    cells: [HEIGHT * LENGTH]Cell,
-
-    const Char = u21;
-
-    // TODO: Make more comprehensive
-    const Cell = struct {
-        // TODO: Support UTF-8
-        char: Char,
-        fg: Color,
-        bg: Color,
-        bold: bool,
-    };
-
-    const CellOptions = struct {
-        char: ?Char = null,
-        fg: ?Color = null,
-        bg: ?Color = null,
-        bold: ?bool = null,
-    };
-
-    // TODO: Set attributes separately
-    pub fn set(
-        self: *Frame,
-        y: usize,
-        x: usize,
-        options: CellOptions,
-    ) void {
-        var cell = &self.cells[y * LENGTH + x];
-        if (options.char) |char| {
-            cell.char = char;
-        }
-        if (options.fg) |fg| {
-            cell.fg = fg;
-        }
-        if (options.bg) |bg| {
-            cell.bg = bg;
-        }
-        if (options.bold) |bold| {
-            cell.bold = bold;
-        }
-    }
-
-    pub fn get(self: *Frame, y: usize, x: usize) Cell {
-        return self.cells[y * LENGTH + x];
-    }
+    const PADDING_LEFT: usize = 3;
+    const PADDING_RIGHT: usize = 3;
+    const PADDING_TOP: usize = 1;
+    const PADDING_BOTTOM: usize = 1;
 };
-
-// TODO: Rename "*_LENGTH" -> "*_WIDTH"
-const PIECE_LENGTH: usize = 3;
-const PIECE_HEIGHT: usize = 3;
-
-const PADDING_LEFT: usize = 3;
-const PADDING_RIGHT: usize = 3;
-const PADDING_TOP: usize = 1;
-const PADDING_BOTTOM: usize = 1;
-
-const CELL_LENGTH: usize = PIECE_LENGTH + PADDING_LEFT + PADDING_RIGHT;
-const CELL_HEIGHT: usize = PIECE_HEIGHT + PADDING_TOP + PADDING_BOTTOM;
 
 const Edge = enum {
     left,
@@ -94,22 +43,11 @@ const Edge = enum {
 };
 
 pub fn new(ascii: bool) Self {
-    var self = Self{
+    return Self{
         .terminal = Terminal.new(),
         .ascii = ascii,
-        .frame = undefined,
+        .frame = Frame.new(.{}),
     };
-    for (0..Frame.HEIGHT) |y| {
-        for (0..Frame.LENGTH) |x| {
-            self.frame.set(y, x, .{
-                .char = ' ',
-                .fg = .white,
-                .bg = .black,
-                .bold = false,
-            });
-        }
-    }
-    return self;
 }
 
 pub fn enter(self: *Self) !void {
@@ -135,18 +73,16 @@ pub fn exit(self: *Self) !void {
 }
 
 pub fn render(self: *Self, state: *const State) void {
-    self.terminal.setCursorPosition(1, 1);
-
     for (0..Board.SIZE) |row| {
         for (0..Board.SIZE) |col| {
             const is_even = (row + col) % 2 == 0;
             const bg: Color = if (is_even) .black else .white;
 
-            for (0..CELL_HEIGHT) |y| {
-                for (0..CELL_LENGTH) |x| {
+            for (0..dims.CELL_HEIGHT) |y| {
+                for (0..dims.CELL_WIDTH) |x| {
                     self.frame.set(
-                        row * CELL_HEIGHT + y,
-                        col * CELL_LENGTH + x,
+                        row * dims.CELL_HEIGHT + y,
+                        col * dims.CELL_WIDTH + x,
                         .{ .char = ' ', .bg = bg },
                     );
                 }
@@ -155,13 +91,13 @@ pub fn render(self: *Self, state: *const State) void {
             if (state.board.get(row, col)) |piece| {
                 const string = piece.string();
 
-                for (0..PIECE_HEIGHT) |y| {
-                    for (0..PIECE_LENGTH) |x| {
-                        const char = string[y * PIECE_HEIGHT + x];
+                for (0..Piece.HEIGHT) |y| {
+                    for (0..Piece.WIDTH) |x| {
+                        const char = string[y * Piece.HEIGHT + x];
 
                         self.frame.set(
-                            row * CELL_HEIGHT + y + PADDING_TOP,
-                            col * CELL_LENGTH + x + PADDING_LEFT,
+                            row * dims.CELL_HEIGHT + y + dims.PADDING_TOP,
+                            col * dims.CELL_WIDTH + x + dims.PADDING_LEFT,
                             .{ .char = char, .fg = .green, .bold = true },
                         );
                     }
@@ -172,58 +108,62 @@ pub fn render(self: *Self, state: *const State) void {
 
     const cursor_fg: Color = if (state.active == .white) .blue else .red;
 
-    for (1..CELL_LENGTH - 1) |x| {
+    for (1..dims.CELL_WIDTH - 1) |x| {
         self.frame.set(
-            state.cursor.row * CELL_HEIGHT,
-            state.cursor.col * CELL_LENGTH + x,
+            state.cursor.row * dims.CELL_HEIGHT,
+            state.cursor.col * dims.CELL_WIDTH + x,
             .{ .fg = cursor_fg, .char = self.getEdge(.top) },
         );
     }
-    for (1..CELL_LENGTH - 1) |x| {
+    for (1..dims.CELL_WIDTH - 1) |x| {
         self.frame.set(
-            state.cursor.row * CELL_HEIGHT + CELL_HEIGHT - 1,
-            state.cursor.col * CELL_LENGTH + x,
+            state.cursor.row * dims.CELL_HEIGHT + dims.CELL_HEIGHT - 1,
+            state.cursor.col * dims.CELL_WIDTH + x,
             .{ .fg = cursor_fg, .char = self.getEdge(.bottom) },
         );
     }
-    for (1..CELL_HEIGHT - 1) |y| {
+    for (1..dims.CELL_HEIGHT - 1) |y| {
         self.frame.set(
-            state.cursor.row * CELL_HEIGHT + y,
-            state.cursor.col * CELL_LENGTH,
+            state.cursor.row * dims.CELL_HEIGHT + y,
+            state.cursor.col * dims.CELL_WIDTH,
             .{ .fg = cursor_fg, .char = self.getEdge(.left) },
         );
     }
-    for (1..CELL_HEIGHT - 1) |y| {
+    for (1..dims.CELL_HEIGHT - 1) |y| {
         self.frame.set(
-            state.cursor.row * CELL_HEIGHT + y,
-            state.cursor.col * CELL_LENGTH + CELL_LENGTH - 1,
+            state.cursor.row * dims.CELL_HEIGHT + y,
+            state.cursor.col * dims.CELL_WIDTH + dims.CELL_WIDTH - 1,
             .{ .fg = cursor_fg, .char = self.getEdge(.right) },
         );
     }
     self.frame.set(
-        state.cursor.row * CELL_HEIGHT,
-        state.cursor.col * CELL_LENGTH,
+        state.cursor.row * dims.CELL_HEIGHT,
+        state.cursor.col * dims.CELL_WIDTH,
         .{ .fg = cursor_fg, .char = self.getEdge(.top_left) },
     );
     self.frame.set(
-        state.cursor.row * CELL_HEIGHT,
-        state.cursor.col * CELL_LENGTH + CELL_LENGTH - 1,
+        state.cursor.row * dims.CELL_HEIGHT,
+        state.cursor.col * dims.CELL_WIDTH + dims.CELL_WIDTH - 1,
         .{ .fg = cursor_fg, .char = self.getEdge(.top_right) },
     );
     self.frame.set(
-        state.cursor.row * CELL_HEIGHT + CELL_HEIGHT - 1,
-        state.cursor.col * CELL_LENGTH,
+        state.cursor.row * dims.CELL_HEIGHT + dims.CELL_HEIGHT - 1,
+        state.cursor.col * dims.CELL_WIDTH,
         .{ .fg = cursor_fg, .char = self.getEdge(.bottom_left) },
     );
     self.frame.set(
-        state.cursor.row * CELL_HEIGHT + CELL_HEIGHT - 1,
-        state.cursor.col * CELL_LENGTH + CELL_LENGTH - 1,
+        state.cursor.row * dims.CELL_HEIGHT + dims.CELL_HEIGHT - 1,
+        state.cursor.col * dims.CELL_WIDTH + dims.CELL_WIDTH - 1,
         .{ .fg = cursor_fg, .char = self.getEdge(.bottom_right) },
     );
+}
+
+pub fn draw(self: *Self) void {
+    self.terminal.setCursorPosition(1, 1);
 
     // PERF: Only update cells which changed from last frame
     for (0..Frame.HEIGHT) |y| {
-        for (0..Frame.LENGTH) |x| {
+        for (0..Frame.WIDTH) |x| {
             const cell = self.frame.get(y, x);
             // PERF: Only set attributes if changed from previous cell
             self.terminal.resetStyle();

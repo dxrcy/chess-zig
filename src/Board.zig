@@ -7,7 +7,7 @@ pub const SIZE: usize = 8;
 
 tiles: [SIZE * SIZE]u8,
 
-const Piece = enum(u8) {
+pub const Piece = enum(u8) {
     pawn = 1,
     rook,
     knight,
@@ -15,7 +15,10 @@ const Piece = enum(u8) {
     king,
     queen,
 
-    /// Returns ASCII representation of `self`.
+    pub const HEIGHT: usize = 3;
+    pub const WIDTH: usize = 3;
+
+    /// Returns `HEIGHT*WIDTH` ASCII representation of `self`.
     pub fn string(self: Piece) []const u8 {
         return switch (self) {
             .pawn =>
