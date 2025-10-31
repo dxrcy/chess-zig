@@ -15,7 +15,8 @@ const Color = Terminal.Color;
 const Frame = @import("Frame.zig");
 
 terminal: Terminal,
-frame: Frame,
+frames: [2]Frame,
+current_frame: u1,
 ascii: bool,
 
 pub const dims = struct {
@@ -45,8 +46,9 @@ const Edge = enum {
 pub fn new(ascii: bool) Self {
     return Self{
         .terminal = Terminal.new(),
+        .frames = [1]Frame{Frame.new(.{})} ** 2,
+        .current_frame = 0,
         .ascii = ascii,
-        .frame = Frame.new(.{}),
     };
 }
 
@@ -73,6 +75,8 @@ pub fn exit(self: *Self) !void {
 }
 
 pub fn render(self: *Self, state: *const State) void {
+    const frame = self.getForeFrame();
+
     for (0..Board.SIZE) |row| {
         for (0..Board.SIZE) |col| {
             const is_even = (row + col) % 2 == 0;
@@ -80,7 +84,7 @@ pub fn render(self: *Self, state: *const State) void {
 
             for (0..dims.CELL_HEIGHT) |y| {
                 for (0..dims.CELL_WIDTH) |x| {
-                    self.frame.set(
+                    frame.set(
                         row * dims.CELL_HEIGHT + y,
                         col * dims.CELL_WIDTH + x,
                         .{ .char = ' ', .bg = bg },
@@ -95,7 +99,7 @@ pub fn render(self: *Self, state: *const State) void {
                     for (0..Piece.WIDTH) |x| {
                         const char = string[y * Piece.HEIGHT + x];
 
-                        self.frame.set(
+                        frame.set(
                             row * dims.CELL_HEIGHT + y + dims.PADDING_TOP,
                             col * dims.CELL_WIDTH + x + dims.PADDING_LEFT,
                             .{ .char = char, .fg = .green, .bold = true },
@@ -109,49 +113,49 @@ pub fn render(self: *Self, state: *const State) void {
     const cursor_fg: Color = if (state.active == .white) .blue else .red;
 
     for (1..dims.CELL_WIDTH - 1) |x| {
-        self.frame.set(
+        frame.set(
             state.cursor.row * dims.CELL_HEIGHT,
             state.cursor.col * dims.CELL_WIDTH + x,
             .{ .fg = cursor_fg, .char = self.getEdge(.top) },
         );
     }
     for (1..dims.CELL_WIDTH - 1) |x| {
-        self.frame.set(
+        frame.set(
             state.cursor.row * dims.CELL_HEIGHT + dims.CELL_HEIGHT - 1,
             state.cursor.col * dims.CELL_WIDTH + x,
             .{ .fg = cursor_fg, .char = self.getEdge(.bottom) },
         );
     }
     for (1..dims.CELL_HEIGHT - 1) |y| {
-        self.frame.set(
+        frame.set(
             state.cursor.row * dims.CELL_HEIGHT + y,
             state.cursor.col * dims.CELL_WIDTH,
             .{ .fg = cursor_fg, .char = self.getEdge(.left) },
         );
     }
     for (1..dims.CELL_HEIGHT - 1) |y| {
-        self.frame.set(
+        frame.set(
             state.cursor.row * dims.CELL_HEIGHT + y,
             state.cursor.col * dims.CELL_WIDTH + dims.CELL_WIDTH - 1,
             .{ .fg = cursor_fg, .char = self.getEdge(.right) },
         );
     }
-    self.frame.set(
+    frame.set(
         state.cursor.row * dims.CELL_HEIGHT,
         state.cursor.col * dims.CELL_WIDTH,
         .{ .fg = cursor_fg, .char = self.getEdge(.top_left) },
     );
-    self.frame.set(
+    frame.set(
         state.cursor.row * dims.CELL_HEIGHT,
         state.cursor.col * dims.CELL_WIDTH + dims.CELL_WIDTH - 1,
         .{ .fg = cursor_fg, .char = self.getEdge(.top_right) },
     );
-    self.frame.set(
+    frame.set(
         state.cursor.row * dims.CELL_HEIGHT + dims.CELL_HEIGHT - 1,
         state.cursor.col * dims.CELL_WIDTH,
         .{ .fg = cursor_fg, .char = self.getEdge(.bottom_left) },
     );
-    self.frame.set(
+    frame.set(
         state.cursor.row * dims.CELL_HEIGHT + dims.CELL_HEIGHT - 1,
         state.cursor.col * dims.CELL_WIDTH + dims.CELL_WIDTH - 1,
         .{ .fg = cursor_fg, .char = self.getEdge(.bottom_right) },
@@ -159,26 +163,55 @@ pub fn render(self: *Self, state: *const State) void {
 }
 
 pub fn draw(self: *Self) void {
+    // TODO: Ideally remove this initial call after positioning is optimized
     self.terminal.setCursorPosition(1, 1);
 
-    // PERF: Only update cells which changed from last frame
     for (0..Frame.HEIGHT) |y| {
         for (0..Frame.WIDTH) |x| {
-            const cell = self.frame.get(y, x);
-            // PERF: Only set attributes if changed from previous cell
+            const cell_fore = self.getForeFrame().get(y, x);
+            const cell_back = self.getBackFrame().get(y, x);
+
+            if (cell_back.eql(cell_fore.*)) {
+                continue;
+            }
+
+            // PERF: Don't move if redundant
+            // If previous (left) cell printed, it already moved the cursor for
+            // to cell
+            self.terminal.setCursorPosition(@intCast(y + 1), @intCast(x + 1));
+
+            // PERF: Only reset/set attributes if necessary
+            // (if any style changed, have to re-print character regardless)
+
             self.terminal.resetStyle();
-            if (cell.bold) {
+            if (cell_fore.bold) {
                 self.terminal.setStyle(.bold);
             }
-            self.terminal.setForeground(cell.fg);
-            self.terminal.setBackground(cell.bg);
-            self.terminal.print("{u}", .{cell.char});
+            self.terminal.setForeground(cell_fore.fg);
+            self.terminal.setBackground(cell_fore.bg);
+
+            self.terminal.print("{u}", .{cell_fore.char});
+
+            cell_back.* = cell_fore.*;
         }
-        self.terminal.print("\r\n", .{});
     }
 
     self.terminal.resetStyle();
     self.terminal.flush();
+
+    self.swapFrames();
+}
+
+pub fn getForeFrame(self: *Self) *Frame {
+    return &self.frames[self.current_frame];
+}
+pub fn getBackFrame(self: *Self) *Frame {
+    assert(@TypeOf(self.current_frame) == u1);
+    return &self.frames[self.current_frame +% 1];
+}
+pub fn swapFrames(self: *Self) void {
+    assert(@TypeOf(self.current_frame) == u1);
+    self.current_frame +%= 1;
 }
 
 pub fn getEdge(self: *const Self, edge: Edge) u21 {

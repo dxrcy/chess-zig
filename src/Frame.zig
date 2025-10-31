@@ -21,9 +21,16 @@ const Char = u21;
 // TODO: Make more comprehensive
 const Cell = struct {
     char: Char,
-    fg: Terminal.Color,
+    fg: Color,
     bg: Color,
     bold: bool,
+
+    pub fn eql(lhs: Cell, rhs: Cell) bool {
+        return lhs.char == rhs.char and
+            lhs.fg == rhs.fg and
+            lhs.bg == rhs.bg and
+            lhs.bold == rhs.bold;
+    }
 };
 
 const CellOptions = struct {
@@ -66,6 +73,6 @@ pub fn set(
     }
 }
 
-pub fn get(self: *Self, y: usize, x: usize) Cell {
-    return self.cells[y * WIDTH + x];
+pub fn get(self: *Self, y: usize, x: usize) *Cell {
+    return &self.cells[y * WIDTH + x];
 }
