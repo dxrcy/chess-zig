@@ -20,6 +20,7 @@ current_frame: u1,
 ascii: bool,
 
 pub const dims = struct {
+    // TODO: Rename `CELL_*` to `TILE_*`
     pub const CELL_WIDTH: usize = Piece.WIDTH + PADDING_LEFT + PADDING_RIGHT;
     pub const CELL_HEIGHT: usize = Piece.HEIGHT + PADDING_TOP + PADDING_BOTTOM;
 
@@ -38,10 +39,9 @@ const Edge = enum {
     top_right,
     bottom_left,
     bottom_right,
-
-    /// Character count (not bytes) of any edge character.
-    const LENGTH = 1;
 };
+
+const Rect = struct { y: usize, x: usize, h: usize, w: usize };
 
 pub fn new(ascii: bool) Self {
     return Self{
@@ -77,89 +77,122 @@ pub fn exit(self: *Self) !void {
 pub fn render(self: *Self, state: *const State) void {
     const frame = self.getForeFrame();
 
+    // Board tile
     for (0..Board.SIZE) |row| {
         for (0..Board.SIZE) |col| {
-            const is_even = (row + col) % 2 == 0;
-            const bg: Color = if (is_even) .black else .white;
+            self.renderRectSolid(.{
+                .y = row * dims.CELL_HEIGHT,
+                .x = col * dims.CELL_WIDTH,
+                .h = dims.CELL_HEIGHT,
+                .w = dims.CELL_WIDTH,
+            }, .{
+                .bg = if ((row + col) % 2 == 0) .black else .white,
+            });
+        }
+    }
 
-            for (0..dims.CELL_HEIGHT) |y| {
-                for (0..dims.CELL_WIDTH) |x| {
+    // Board piece icons
+    for (0..Board.SIZE) |row| {
+        for (0..Board.SIZE) |col| {
+            const piece = state.board.get(row, col) orelse
+                continue;
+            const string = piece.string();
+
+            for (0..Piece.HEIGHT) |y| {
+                for (0..Piece.WIDTH) |x| {
                     frame.set(
-                        row * dims.CELL_HEIGHT + y,
-                        col * dims.CELL_WIDTH + x,
-                        .{ .char = ' ', .bg = bg },
+                        row * dims.CELL_HEIGHT + y + dims.PADDING_TOP,
+                        col * dims.CELL_WIDTH + x + dims.PADDING_LEFT,
+                        .{
+                            .char = string[y * Piece.HEIGHT + x],
+                            .fg = .green,
+                            .bold = true,
+                        },
                     );
-                }
-            }
-
-            if (state.board.get(row, col)) |piece| {
-                const string = piece.string();
-
-                for (0..Piece.HEIGHT) |y| {
-                    for (0..Piece.WIDTH) |x| {
-                        const char = string[y * Piece.HEIGHT + x];
-
-                        frame.set(
-                            row * dims.CELL_HEIGHT + y + dims.PADDING_TOP,
-                            col * dims.CELL_WIDTH + x + dims.PADDING_LEFT,
-                            .{ .char = char, .fg = .green, .bold = true },
-                        );
-                    }
                 }
             }
         }
     }
 
-    const cursor_fg: Color = if (state.active == .white) .blue else .red;
+    // Cursor
+    self.renderRectHighlight(.{
+        .y = state.cursor.row * dims.CELL_HEIGHT,
+        .x = state.cursor.col * dims.CELL_WIDTH,
+        .h = dims.CELL_HEIGHT,
+        .w = dims.CELL_WIDTH,
+    }, .{
+        .fg = if (state.active == .white) .blue else .red,
+    });
+}
 
-    for (1..dims.CELL_WIDTH - 1) |x| {
+fn renderRectSolid(
+    self: *Self,
+    rect: Rect,
+    options: Frame.CellOptions,
+) void {
+    var frame = self.getForeFrame();
+
+    for (0..rect.h) |y| {
+        for (0..rect.w) |x| {
+            frame.set(
+                rect.y + y,
+                rect.x + x,
+                options.join(.{ .char = ' ' }),
+            );
+        }
+    }
+}
+
+fn renderRectHighlight(
+    self: *Self,
+    rect: Rect,
+    options: Frame.CellOptions,
+) void {
+    var frame = self.getForeFrame();
+
+    for (1..rect.w - 1) |x| {
         frame.set(
-            state.cursor.row * dims.CELL_HEIGHT,
-            state.cursor.col * dims.CELL_WIDTH + x,
-            .{ .fg = cursor_fg, .char = self.getEdge(.top) },
+            rect.y,
+            rect.x + x,
+            options.join(.{ .char = self.getEdge(.top) }),
+        );
+        frame.set(
+            rect.y + rect.h - 1,
+            rect.x + x,
+            options.join(.{ .char = self.getEdge(.bottom) }),
         );
     }
-    for (1..dims.CELL_WIDTH - 1) |x| {
+
+    for (1..rect.h - 1) |y| {
         frame.set(
-            state.cursor.row * dims.CELL_HEIGHT + dims.CELL_HEIGHT - 1,
-            state.cursor.col * dims.CELL_WIDTH + x,
-            .{ .fg = cursor_fg, .char = self.getEdge(.bottom) },
+            rect.y + y,
+            rect.x,
+            options.join(.{ .char = self.getEdge(.left) }),
+        );
+        frame.set(
+            rect.y + y,
+            rect.x + rect.w - 1,
+            options.join(.{ .char = self.getEdge(.right) }),
         );
     }
-    for (1..dims.CELL_HEIGHT - 1) |y| {
+
+    const corners = [_]struct { usize, usize, Edge }{
+        .{ 0, 0, .top_left },
+        .{ 0, 1, .top_right },
+        .{ 1, 0, .bottom_left },
+        .{ 1, 1, .bottom_right },
+    };
+
+    inline for (corners) |corner| {
+        const y = corner[0];
+        const x = corner[1];
+        const edge = corner[2];
         frame.set(
-            state.cursor.row * dims.CELL_HEIGHT + y,
-            state.cursor.col * dims.CELL_WIDTH,
-            .{ .fg = cursor_fg, .char = self.getEdge(.left) },
+            rect.y + y * (rect.h - 1),
+            rect.x + x * (rect.w - 1),
+            options.join(.{ .char = self.getEdge(edge) }),
         );
     }
-    for (1..dims.CELL_HEIGHT - 1) |y| {
-        frame.set(
-            state.cursor.row * dims.CELL_HEIGHT + y,
-            state.cursor.col * dims.CELL_WIDTH + dims.CELL_WIDTH - 1,
-            .{ .fg = cursor_fg, .char = self.getEdge(.right) },
-        );
-    }
-    frame.set(
-        state.cursor.row * dims.CELL_HEIGHT,
-        state.cursor.col * dims.CELL_WIDTH,
-        .{ .fg = cursor_fg, .char = self.getEdge(.top_left) },
-    );
-    frame.set(
-        state.cursor.row * dims.CELL_HEIGHT,
-        state.cursor.col * dims.CELL_WIDTH + dims.CELL_WIDTH - 1,
-        .{ .fg = cursor_fg, .char = self.getEdge(.top_right) },
-    );
-    frame.set(
-        state.cursor.row * dims.CELL_HEIGHT + dims.CELL_HEIGHT - 1,
-        state.cursor.col * dims.CELL_WIDTH,
-        .{ .fg = cursor_fg, .char = self.getEdge(.bottom_left) },
-    );
-    frame.set(
-        state.cursor.row * dims.CELL_HEIGHT + dims.CELL_HEIGHT - 1,
-        state.cursor.col * dims.CELL_WIDTH + dims.CELL_WIDTH - 1,
-        .{ .fg = cursor_fg, .char = self.getEdge(.bottom_right) },
-    );
 }
 
 pub fn draw(self: *Self) void {

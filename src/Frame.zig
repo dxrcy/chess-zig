@@ -33,11 +33,21 @@ const Cell = struct {
     }
 };
 
-const CellOptions = struct {
+pub const CellOptions = struct {
     char: ?Char = null,
     fg: ?Color = null,
     bg: ?Color = null,
     bold: ?bool = null,
+
+    /// Merge two [`CellOptions`], preferring values of `rhs`.
+    pub fn join(lhs: CellOptions, rhs: CellOptions) CellOptions {
+        return CellOptions{
+            .char = rhs.char orelse lhs.char orelse null,
+            .fg = rhs.fg orelse lhs.fg orelse null,
+            .bg = rhs.bg orelse lhs.bg orelse null,
+            .bold = rhs.bold orelse lhs.bold orelse null,
+        };
+    }
 };
 
 pub fn new(default_cell: CellOptions) Self {
