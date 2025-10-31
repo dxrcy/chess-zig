@@ -19,10 +19,9 @@ frames: [2]Frame,
 current_frame: u1,
 ascii: bool,
 
-pub const dims = struct {
-    // TODO: Rename `CELL_*` to `TILE_*`
-    pub const CELL_WIDTH: usize = Piece.WIDTH + PADDING_LEFT + PADDING_RIGHT;
-    pub const CELL_HEIGHT: usize = Piece.HEIGHT + PADDING_TOP + PADDING_BOTTOM;
+pub const tile = struct {
+    pub const WIDTH: usize = Piece.WIDTH + PADDING_LEFT + PADDING_RIGHT;
+    pub const HEIGHT: usize = Piece.HEIGHT + PADDING_TOP + PADDING_BOTTOM;
 
     const PADDING_LEFT: usize = 3;
     const PADDING_RIGHT: usize = 3;
@@ -81,10 +80,10 @@ pub fn render(self: *Self, state: *const State) void {
     for (0..Board.SIZE) |row| {
         for (0..Board.SIZE) |col| {
             self.renderRectSolid(.{
-                .y = row * dims.CELL_HEIGHT,
-                .x = col * dims.CELL_WIDTH,
-                .h = dims.CELL_HEIGHT,
-                .w = dims.CELL_WIDTH,
+                .y = row * tile.HEIGHT,
+                .x = col * tile.WIDTH,
+                .h = tile.HEIGHT,
+                .w = tile.WIDTH,
             }, .{
                 .bg = if ((row + col) % 2 == 0) .black else .white,
             });
@@ -101,8 +100,8 @@ pub fn render(self: *Self, state: *const State) void {
             for (0..Piece.HEIGHT) |y| {
                 for (0..Piece.WIDTH) |x| {
                     frame.set(
-                        row * dims.CELL_HEIGHT + y + dims.PADDING_TOP,
-                        col * dims.CELL_WIDTH + x + dims.PADDING_LEFT,
+                        row * tile.HEIGHT + y + tile.PADDING_TOP,
+                        col * tile.WIDTH + x + tile.PADDING_LEFT,
                         .{
                             .char = string[y * Piece.HEIGHT + x],
                             .fg = .green,
@@ -116,10 +115,10 @@ pub fn render(self: *Self, state: *const State) void {
 
     // Cursor
     self.renderRectHighlight(.{
-        .y = state.cursor.row * dims.CELL_HEIGHT,
-        .x = state.cursor.col * dims.CELL_WIDTH,
-        .h = dims.CELL_HEIGHT,
-        .w = dims.CELL_WIDTH,
+        .y = state.cursor.row * tile.HEIGHT,
+        .x = state.cursor.col * tile.WIDTH,
+        .h = tile.HEIGHT,
+        .w = tile.WIDTH,
     }, .{
         .fg = if (state.active == .white) .blue else .red,
     });

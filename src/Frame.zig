@@ -11,8 +11,8 @@ const Color = Terminal.Color;
 const Ui = @import("Ui.zig");
 
 // TODO: Use larger size
-pub const HEIGHT = Board.SIZE * Ui.dims.CELL_HEIGHT;
-pub const WIDTH = Board.SIZE * Ui.dims.CELL_WIDTH;
+pub const HEIGHT = Board.SIZE * Ui.tile.HEIGHT;
+pub const WIDTH = Board.SIZE * Ui.tile.WIDTH;
 
 cells: [HEIGHT * WIDTH]Cell,
 
