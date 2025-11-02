@@ -25,6 +25,8 @@ const stdout = struct {
 
 original_termios: ?posix.termios,
 
+/// Most methods do **not** modify these fields, eg. [`print`].
+// TODO: Move to some state struct
 cursor: Cursor,
 fg: Color,
 bg: Color,
@@ -44,7 +46,8 @@ pub const Style = enum(u8) {
     italic = 3,
 };
 
-// TODO: Add bright colors, and default (unset) colors
+/// Use [`Color.unset`] for default color.
+// TODO: Add bright colors
 pub const Color = enum(u8) {
     black = 0,
     red = 1,
@@ -54,6 +57,7 @@ pub const Color = enum(u8) {
     magenta = 5,
     cyan = 6,
     white = 7,
+    unset = 9,
 };
 
 /// Cursor and attribute fields are not initialized with sensible values.

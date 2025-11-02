@@ -239,8 +239,8 @@ pub fn draw(self: *Self) void {
     }
 
     self.terminal.resetStyle();
-    _ = self.terminal.updateForeground(.white);
-    _ = self.terminal.updateBackground(.black);
+    _ = self.terminal.updateForeground(.unset);
+    _ = self.terminal.updateBackground(.unset);
 
     inline for (@typeInfo(Updates).@"struct".fields, 0..) |field, i| {
         _ = self.terminal.updateCursor(.{ .row = Frame.HEIGHT + i + 1, .col = 1 });
