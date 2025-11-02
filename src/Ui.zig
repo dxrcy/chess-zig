@@ -195,8 +195,10 @@ fn renderRectHighlight(
 }
 
 pub fn draw(self: *Self) void {
-    // TODO: Ideally remove this initial call after positioning is optimized
-    self.terminal.setCursorPosition(1, 1);
+    var cursor: struct { y: usize, x: usize } = .{
+        .y = std.math.maxInt(usize),
+        .x = std.math.maxInt(usize),
+    };
 
     for (0..Frame.HEIGHT) |y| {
         for (0..Frame.WIDTH) |x| {
@@ -207,10 +209,10 @@ pub fn draw(self: *Self) void {
                 continue;
             }
 
-            // PERF: Don't move if redundant
-            // If previous (left) cell printed, it already moved the cursor for
-            // to cell
-            self.terminal.setCursorPosition(@intCast(y + 1), @intCast(x + 1));
+            if (cursor.y != y or cursor.x != x) {
+                self.terminal.setCursorPosition(@intCast(y + 1), @intCast(x + 1));
+                cursor = .{ .y = y, .x = x };
+            }
 
             // PERF: Only reset/set attributes if necessary
             // (if any style changed, have to re-print character regardless)
@@ -223,6 +225,7 @@ pub fn draw(self: *Self) void {
             self.terminal.setBackground(cell_fore.bg);
 
             self.terminal.print("{u}", .{cell_fore.char});
+            cursor.x += 1;
 
             cell_back.* = cell_fore.*;
         }
