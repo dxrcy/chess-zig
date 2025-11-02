@@ -25,6 +25,18 @@ const stdout = struct {
 
 original_termios: ?posix.termios,
 
+cursor: Cursor,
+
+// TODO: Add `eql` method
+pub const Cursor = struct {
+    row: usize,
+    col: usize,
+
+    pub fn eql(lhs: Cursor, rhs: Cursor) bool {
+        return lhs.row == rhs.row and lhs.col == rhs.col;
+    }
+};
+
 pub const Style = enum(u8) {
     bold = 1,
     dim = 2,
@@ -42,9 +54,11 @@ pub const Color = enum(u8) {
     white = 7,
 };
 
+/// No properties are initialized.
 pub fn new() Self {
     return Self{
         .original_termios = null,
+        .cursor = .{ .row = 0, .col = 0 },
     };
 }
 
@@ -103,8 +117,8 @@ pub fn clearEntireScreen(self: *Self) void {
     self.print("\x1b[2J", .{});
 }
 
-pub fn setCursorPosition(self: *Self, row: u16, col: u16) void {
-    self.print("\x1b[{};{}H", .{ row, col });
+pub fn sendCursor(self: *Self) void {
+    self.print("\x1b[{};{}H", .{ self.cursor.row, self.cursor.col });
 }
 
 pub fn resetStyle(self: *Self) void {

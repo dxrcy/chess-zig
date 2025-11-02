@@ -195,11 +195,6 @@ fn renderRectHighlight(
 }
 
 pub fn draw(self: *Self) void {
-    var cursor: struct { y: usize, x: usize } = .{
-        .y = std.math.maxInt(usize),
-        .x = std.math.maxInt(usize),
-    };
-
     for (0..Frame.HEIGHT) |y| {
         for (0..Frame.WIDTH) |x| {
             const cell_fore = self.getForeFrame().get(y, x);
@@ -209,9 +204,9 @@ pub fn draw(self: *Self) void {
                 continue;
             }
 
-            if (cursor.y != y or cursor.x != x) {
-                self.terminal.setCursorPosition(@intCast(y + 1), @intCast(x + 1));
-                cursor = .{ .y = y, .x = x };
+            if (!self.terminal.cursor.eql(.{ .row = y + 1, .col = x + 1 })) {
+                self.terminal.cursor = .{ .row = y + 1, .col = x + 1 };
+                self.terminal.sendCursor();
             }
 
             // PERF: Only reset/set attributes if necessary
@@ -225,7 +220,7 @@ pub fn draw(self: *Self) void {
             self.terminal.setBackground(cell_fore.bg);
 
             self.terminal.print("{u}", .{cell_fore.char});
-            cursor.x += 1;
+            self.terminal.cursor.col += 1;
 
             cell_back.* = cell_fore.*;
         }

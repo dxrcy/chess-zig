@@ -14,6 +14,8 @@ pub const Player = enum {
 };
 
 pub const Position = struct {
+    // TODO: Rename fields to `y` and `x` to avoid confusion with
+    // `Terminal.Cursor`
     row: usize,
     col: usize,
 
