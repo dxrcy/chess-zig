@@ -26,6 +26,8 @@ const stdout = struct {
 original_termios: ?posix.termios,
 
 cursor: Cursor,
+fg: Color,
+bg: Color,
 
 // TODO: Add `eql` method
 pub const Cursor = struct {
@@ -54,11 +56,13 @@ pub const Color = enum(u8) {
     white = 7,
 };
 
-/// No properties are initialized.
+/// Cursor and attribute fields are not initialized with sensible values.
 pub fn new() Self {
     return Self{
         .original_termios = null,
         .cursor = .{ .row = 0, .col = 0 },
+        .fg = .white,
+        .bg = .black,
     };
 }
 
@@ -121,18 +125,28 @@ pub fn sendCursor(self: *Self) void {
     self.print("\x1b[{};{}H", .{ self.cursor.row, self.cursor.col });
 }
 
+pub fn sendForeground(self: *Self) void {
+    self.print("\x1b[3{d}m", .{@intFromEnum(self.fg)});
+}
+
+pub fn sendBackground(self: *Self) void {
+    self.print("\x1b[4{d}m", .{@intFromEnum(self.bg)});
+}
+
+// TODO: Remove
 pub fn resetStyle(self: *Self) void {
     self.print("\x1b[0m", .{});
 }
 
+// TODO: Replace with `sendStyle` or something better
 pub fn setStyle(self: *Self, style: Style) void {
     self.print("\x1b[{d}m", .{@intFromEnum(style)});
 }
 
-pub fn setForeground(self: *Self, color: Color) void {
-    self.print("\x1b[3{d}m", .{@intFromEnum(color)});
-}
-
-pub fn setBackground(self: *Self, color: Color) void {
-    self.print("\x1b[4{d}m", .{@intFromEnum(color)});
-}
+// pub fn setForeground(self: *Self, color: Color) void {
+//     self.print("\x1b[3{d}m", .{@intFromEnum(color)});
+// }
+//
+// pub fn setBackground(self: *Self, color: Color) void {
+//     self.print("\x1b[4{d}m", .{@intFromEnum(color)});
+// }

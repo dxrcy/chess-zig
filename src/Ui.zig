@@ -195,6 +195,9 @@ fn renderRectHighlight(
 }
 
 pub fn draw(self: *Self) void {
+    var moves: usize = 0;
+    var prints: usize = 0;
+
     for (0..Frame.HEIGHT) |y| {
         for (0..Frame.WIDTH) |x| {
             const cell_fore = self.getForeFrame().get(y, x);
@@ -204,9 +207,11 @@ pub fn draw(self: *Self) void {
                 continue;
             }
 
+            // TODO: Move logic to `Terminal`
             if (!self.terminal.cursor.eql(.{ .row = y + 1, .col = x + 1 })) {
                 self.terminal.cursor = .{ .row = y + 1, .col = x + 1 };
                 self.terminal.sendCursor();
+                moves += 1;
             }
 
             // PERF: Only reset/set attributes if necessary
@@ -216,15 +221,24 @@ pub fn draw(self: *Self) void {
             if (cell_fore.bold) {
                 self.terminal.setStyle(.bold);
             }
-            self.terminal.setForeground(cell_fore.fg);
-            self.terminal.setBackground(cell_fore.bg);
+
+            self.terminal.fg = cell_fore.fg;
+            self.terminal.bg = cell_fore.bg;
+            self.terminal.sendForeground();
+            self.terminal.sendBackground();
 
             self.terminal.print("{u}", .{cell_fore.char});
             self.terminal.cursor.col += 1;
+            prints += 1;
 
             cell_back.* = cell_fore.*;
         }
     }
+
+    self.terminal.resetStyle();
+    self.terminal.cursor = .{ .row = Frame.HEIGHT + 2, .col = 1 };
+    self.terminal.sendCursor();
+    self.terminal.print("\r\x1b[K{}\t{}", .{ moves, prints });
 
     self.terminal.resetStyle();
     self.terminal.flush();

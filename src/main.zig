@@ -45,5 +45,6 @@ pub fn main() !void {
         }
     }
 
+    // Don't `defer`, so that error can be returned if possible
     try ui.exit();
 }
