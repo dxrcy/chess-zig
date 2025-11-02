@@ -29,7 +29,6 @@ cursor: Cursor,
 fg: Color,
 bg: Color,
 
-// TODO: Add `eql` method
 pub const Cursor = struct {
     row: usize,
     col: usize,
@@ -45,6 +44,7 @@ pub const Style = enum(u8) {
     italic = 3,
 };
 
+// TODO: Add bright colors, and default (unset) colors
 pub const Color = enum(u8) {
     black = 0,
     red = 1,
@@ -121,32 +121,43 @@ pub fn clearEntireScreen(self: *Self) void {
     self.print("\x1b[2J", .{});
 }
 
-pub fn sendCursor(self: *Self) void {
+/// Returns `true` if cursor changed.
+pub fn updateCursor(self: *Self, cursor: Cursor) bool {
+    if (cursor.eql(self.cursor)) {
+        return false;
+    }
+    self.cursor = cursor;
     self.print("\x1b[{};{}H", .{ self.cursor.row, self.cursor.col });
+    return true;
 }
 
-pub fn sendForeground(self: *Self) void {
+/// Returns `true` if foreground color changed.
+pub fn updateForeground(self: *Self, fg: Color) bool {
+    if (fg == self.fg) {
+        return false;
+    }
+    self.fg = fg;
     self.print("\x1b[3{d}m", .{@intFromEnum(self.fg)});
+    return true;
 }
 
-pub fn sendBackground(self: *Self) void {
+/// Returns `true` if background color changed.
+pub fn updateBackground(self: *Self, bg: Color) bool {
+    if (bg == self.bg) {
+        return false;
+    }
+    self.bg = bg;
     self.print("\x1b[4{d}m", .{@intFromEnum(self.bg)});
+    return true;
 }
 
 // TODO: Remove
 pub fn resetStyle(self: *Self) void {
-    self.print("\x1b[0m", .{});
+    // Clear bold, dim, italic
+    self.print("\x1b[22m\x1b[23m", .{});
 }
 
-// TODO: Replace with `sendStyle` or something better
+// TODO: Replace with `updateStyle` or something better
 pub fn setStyle(self: *Self, style: Style) void {
     self.print("\x1b[{d}m", .{@intFromEnum(style)});
 }
-
-// pub fn setForeground(self: *Self, color: Color) void {
-//     self.print("\x1b[3{d}m", .{@intFromEnum(color)});
-// }
-//
-// pub fn setBackground(self: *Self, color: Color) void {
-//     self.print("\x1b[4{d}m", .{@intFromEnum(color)});
-// }

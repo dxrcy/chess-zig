@@ -195,8 +195,13 @@ fn renderRectHighlight(
 }
 
 pub fn draw(self: *Self) void {
-    var moves: usize = 0;
-    var prints: usize = 0;
+    const Updates = struct {
+        cursor: usize = 0,
+        fg: usize = 0,
+        bg: usize = 0,
+        print: usize = 0,
+    };
+    var updates = Updates{};
 
     for (0..Frame.HEIGHT) |y| {
         for (0..Frame.WIDTH) |x| {
@@ -207,38 +212,44 @@ pub fn draw(self: *Self) void {
                 continue;
             }
 
-            // TODO: Move logic to `Terminal`
-            if (!self.terminal.cursor.eql(.{ .row = y + 1, .col = x + 1 })) {
-                self.terminal.cursor = .{ .row = y + 1, .col = x + 1 };
-                self.terminal.sendCursor();
-                moves += 1;
+            if (self.terminal.updateCursor(.{ .row = y + 1, .col = x + 1 })) {
+                updates.cursor += 1;
             }
 
-            // PERF: Only reset/set attributes if necessary
-            // (if any style changed, have to re-print character regardless)
+            // TODO: Save style field in `Terminal`
 
             self.terminal.resetStyle();
             if (cell_fore.bold) {
                 self.terminal.setStyle(.bold);
             }
 
-            self.terminal.fg = cell_fore.fg;
-            self.terminal.bg = cell_fore.bg;
-            self.terminal.sendForeground();
-            self.terminal.sendBackground();
+            if (self.terminal.updateForeground(cell_fore.fg)) {
+                updates.fg += 1;
+            }
+            if (self.terminal.updateBackground(cell_fore.bg)) {
+                updates.bg += 1;
+            }
 
             self.terminal.print("{u}", .{cell_fore.char});
             self.terminal.cursor.col += 1;
-            prints += 1;
+            updates.print += 1;
 
             cell_back.* = cell_fore.*;
         }
     }
 
     self.terminal.resetStyle();
-    self.terminal.cursor = .{ .row = Frame.HEIGHT + 2, .col = 1 };
-    self.terminal.sendCursor();
-    self.terminal.print("\r\x1b[K{}\t{}", .{ moves, prints });
+    _ = self.terminal.updateForeground(.white);
+    _ = self.terminal.updateBackground(.black);
+
+    inline for (@typeInfo(Updates).@"struct".fields, 0..) |field, i| {
+        _ = self.terminal.updateCursor(.{ .row = Frame.HEIGHT + i + 1, .col = 1 });
+        self.terminal.print("\r\x1b[K", .{});
+        self.terminal.print("{s}\t{}", .{
+            field.name,
+            @field(updates, field.name),
+        });
+    }
 
     self.terminal.resetStyle();
     self.terminal.flush();
