@@ -197,9 +197,7 @@ fn renderRectHighlight(
 pub fn draw(self: *Self) void {
     const Updates = struct {
         cursor: usize = 0,
-        fg: usize = 0,
-        bg: usize = 0,
-        style: usize = 0,
+        state: usize = 0,
         print: usize = 0,
     };
     var updates = Updates{};
@@ -213,26 +211,21 @@ pub fn draw(self: *Self) void {
                 continue;
             }
 
-            if (self.terminal.updateCursor(.{ .row = y + 1, .col = x + 1 })) {
-                updates.cursor += 1;
-            }
-
-            const style = Terminal.Style{
-                .bold = cell_fore.bold,
+            const terminal_state = Terminal.State{
+                .cursor = .{ .row = y + 1, .col = x + 1 },
+                .style = Terminal.Style{
+                    .bold = cell_fore.bold,
+                },
+                .fg = cell_fore.fg,
+                .bg = cell_fore.bg,
             };
 
-            if (self.terminal.updateStyle(style)) {
-                updates.style += 1;
-            }
-            if (self.terminal.updateForeground(cell_fore.fg)) {
-                updates.fg += 1;
-            }
-            if (self.terminal.updateBackground(cell_fore.bg)) {
-                updates.bg += 1;
+            if (self.terminal.updateState(terminal_state)) {
+                updates.state += 1;
             }
 
             self.terminal.print("{u}", .{cell_fore.char});
-            self.terminal.cursor.col += 1;
+            self.terminal.state.cursor.col += 1;
             updates.print += 1;
 
             cell_back.* = cell_fore.*;
@@ -242,6 +235,7 @@ pub fn draw(self: *Self) void {
     _ = self.terminal.updateStyle(.{});
     _ = self.terminal.updateForeground(.unset);
     _ = self.terminal.updateBackground(.unset);
+    _ = self.terminal.updateState(.{});
 
     inline for (@typeInfo(Updates).@"struct".fields, 0..) |field, i| {
         _ = self.terminal.updateCursor(.{ .row = Frame.HEIGHT + i + 1, .col = 1 });

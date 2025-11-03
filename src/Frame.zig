@@ -18,7 +18,7 @@ cells: [HEIGHT * WIDTH]Cell,
 
 const Char = u21;
 
-// TODO: Make more comprehensive
+// TODO: Use `Terminal.State` as a field
 const Cell = struct {
     char: Char,
     fg: Color,

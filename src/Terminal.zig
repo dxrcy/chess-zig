@@ -24,18 +24,19 @@ const stdout = struct {
 };
 
 original_termios: ?posix.termios,
+/// Most methods do **not** modify this field. eg. [`print`].
+state: State,
 
-/// Most methods do **not** modify these fields, eg. [`print`].
-// TODO: Move to some state struct
-cursor: Cursor,
-style: Style,
-fg: Color,
-bg: Color,
+pub const State = struct {
+    cursor: Cursor = .{ .row = 0, .col = 0 },
+    style: Style = .{},
+    fg: Color = .unset,
+    bg: Color = .unset,
+};
 
 pub const Cursor = struct {
     row: usize,
     col: usize,
-
     pub fn eql(lhs: Cursor, rhs: Cursor) bool {
         return lhs.row == rhs.row and lhs.col == rhs.col;
     }
@@ -61,14 +62,11 @@ pub const Color = enum(u8) {
     unset = 9,
 };
 
-/// Cursor and attribute fields are not initialized with sensible values.
+/// State field is initialized with empty values.
 pub fn new() Self {
     return Self{
         .original_termios = null,
-        .cursor = .{ .row = 0, .col = 0 },
-        .style = Style{},
-        .fg = .unset,
-        .bg = .unset,
+        .state = State{},
     };
 }
 
@@ -127,48 +125,80 @@ pub fn clearEntireScreen(self: *Self) void {
     self.print("\x1b[2J", .{});
 }
 
+pub fn updateState(self: *Self, state: State) bool {
+    var any_changed = false;
+
+    if (!state.cursor.eql(self.state.cursor)) {
+        self.print("\x1b[{};{}H", .{ state.cursor.row, state.cursor.col });
+        any_changed = true;
+    }
+
+    // TODO: Support all style attributes
+    if (state.style.bold != self.state.style.bold) {
+        self.print("\x1b[{d}m", .{@as(u8, if (state.style.bold) 1 else 22)});
+        any_changed = true;
+    }
+
+    if (state.fg != self.state.fg) {
+        self.print("\x1b[3{d}m", .{@intFromEnum(state.fg)});
+        any_changed = true;
+    }
+
+    if (state.bg != self.state.bg) {
+        self.print("\x1b[4{d}m", .{@intFromEnum(state.bg)});
+        any_changed = true;
+    }
+
+    self.state = state;
+    return any_changed;
+}
+
 /// Returns `true` if cursor changed.
+// TODO: Remove
 pub fn updateCursor(self: *Self, cursor: Cursor) bool {
-    if (cursor.eql(self.cursor)) {
+    if (cursor.eql(self.state.cursor)) {
         return false;
     }
-    self.cursor = cursor;
-    self.print("\x1b[{};{}H", .{ self.cursor.row, self.cursor.col });
+    self.print("\x1b[{};{}H", .{ cursor.row, cursor.col });
+    self.state.cursor = cursor;
     return true;
 }
 
 /// Returns `true` if style attributes changed.
+// TODO: Remove
 pub fn updateStyle(self: *Self, style: Style) bool {
     var any_changed = false;
 
     // TODO: Support all attributes
-    if (style.bold != self.style.bold) {
+    if (style.bold != self.state.style.bold) {
         any_changed = true;
         self.print("\x1b[{d}m", .{@as(u8, if (style.bold) 1 else 22)});
     }
 
     if (any_changed) {
-        self.style = style;
+        self.state.style = style;
     }
     return any_changed;
 }
 
 /// Returns `true` if foreground color changed.
+// TODO: Remove
 pub fn updateForeground(self: *Self, fg: Color) bool {
-    if (fg == self.fg) {
+    if (fg == self.state.fg) {
         return false;
     }
     self.print("\x1b[3{d}m", .{@intFromEnum(fg)});
-    self.fg = fg;
+    self.state.fg = fg;
     return true;
 }
 
 /// Returns `true` if background color changed.
+// TODO: Remove
 pub fn updateBackground(self: *Self, bg: Color) bool {
-    if (bg == self.bg) {
+    if (bg == self.state.bg) {
         return false;
     }
     self.print("\x1b[4{d}m", .{@intFromEnum(bg)});
-    self.bg = bg;
+    self.state.bg = bg;
     return true;
 }
