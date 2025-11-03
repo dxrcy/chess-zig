@@ -6,6 +6,7 @@ const Piece = State.Board.Piece;
 const Position = State.Position;
 
 const Terminal = @import("Terminal.zig");
+const Attributes = Terminal.Attributes;
 const Color = Terminal.Color;
 
 const Ui = @import("Ui.zig");
@@ -18,21 +19,16 @@ cells: [HEIGHT * WIDTH]Cell,
 
 const Char = u21;
 
-// TODO: Use `Terminal.State` as a field
 const Cell = struct {
     char: Char,
-    fg: Color,
-    bg: Color,
-    bold: bool,
+    attributes: Terminal.Attributes,
 
     pub fn eql(lhs: Cell, rhs: Cell) bool {
-        return lhs.char == rhs.char and
-            lhs.fg == rhs.fg and
-            lhs.bg == rhs.bg and
-            lhs.bold == rhs.bold;
+        return lhs.char == rhs.char and lhs.attributes.eql(rhs.attributes);
     }
 };
 
+// TODO: Add more style attributes
 pub const CellOptions = struct {
     char: ?Char = null,
     fg: ?Color = null,
@@ -62,6 +58,7 @@ pub fn new(default_cell: CellOptions) Self {
     return self;
 }
 
+// TODO: Move logic to `Cell.apply`
 pub fn set(
     self: *Self,
     y: usize,
@@ -73,13 +70,13 @@ pub fn set(
         cell.char = char;
     }
     if (options.fg) |fg| {
-        cell.fg = fg;
+        cell.attributes.fg = fg;
     }
     if (options.bg) |bg| {
-        cell.bg = bg;
+        cell.attributes.bg = bg;
     }
     if (options.bold) |bold| {
-        cell.bold = bold;
+        cell.attributes.style.bold = bold;
     }
 }
 

@@ -29,12 +29,6 @@ cursor: Cursor,
 /// Most methods do **not** modify this field. Eg. [`print`].
 attributes: Attributes,
 
-pub const Attributes = struct {
-    style: Style = .{},
-    fg: Color = .unset,
-    bg: Color = .unset,
-};
-
 pub const Cursor = struct {
     row: usize,
     col: usize,
@@ -44,14 +38,21 @@ pub const Cursor = struct {
     }
 };
 
-pub const Style = packed struct {
-    bold: bool = false,
-    dim: bool = false,
-    italic: bool = false,
+pub const Attributes = struct {
+    fg: Color = .unset,
+    bg: Color = .unset,
+    style: Style = .{},
+
+    pub fn eql(lhs: Attributes, rhs: Attributes) bool {
+        return lhs.fg == rhs.fg and
+            lhs.bg == rhs.bg and
+            lhs.style.eql(rhs.style);
+    }
 };
 
 /// Use [`Color.unset`] for default color.
 // TODO: Add bright colors
+// TODO: Move to child of `Attributes`
 pub const Color = enum(u8) {
     black = 0,
     red = 1,
@@ -62,6 +63,19 @@ pub const Color = enum(u8) {
     cyan = 6,
     white = 7,
     unset = 9,
+};
+
+// TODO: Move to child of `Attributes`
+pub const Style = packed struct {
+    bold: bool = false,
+    dim: bool = false,
+    italic: bool = false,
+
+    pub fn eql(lhs: Style, rhs: Style) bool {
+        return lhs.bold == rhs.bold and
+            lhs.dim == rhs.dim and
+            lhs.italic == rhs.italic;
+    }
 };
 
 pub fn new() Self {
@@ -141,12 +155,6 @@ pub fn updateCursor(self: *Self, cursor: Cursor) bool {
 pub fn updateAttributes(self: *Self, attributes: Attributes) bool {
     var any_changed = false;
 
-    // TODO: Support all style attributes
-    if (attributes.style.bold != self.attributes.style.bold) {
-        self.print("\x1b[{d}m", .{@as(u8, if (attributes.style.bold) 1 else 22)});
-        any_changed = true;
-    }
-
     if (attributes.fg != self.attributes.fg) {
         self.print("\x1b[3{d}m", .{@intFromEnum(attributes.fg)});
         any_changed = true;
@@ -154,6 +162,12 @@ pub fn updateAttributes(self: *Self, attributes: Attributes) bool {
 
     if (attributes.bg != self.attributes.bg) {
         self.print("\x1b[4{d}m", .{@intFromEnum(attributes.bg)});
+        any_changed = true;
+    }
+
+    // TODO: Support all style attributes
+    if (attributes.style.bold != self.attributes.style.bold) {
+        self.print("\x1b[{d}m", .{@as(u8, if (attributes.style.bold) 1 else 22)});
         any_changed = true;
     }
 

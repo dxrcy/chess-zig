@@ -211,18 +211,10 @@ pub fn draw(self: *Self) void {
                 continue;
             }
 
-            const terminal_state = Terminal.Attributes{
-                .style = .{
-                    .bold = cell_fore.bold,
-                },
-                .fg = cell_fore.fg,
-                .bg = cell_fore.bg,
-            };
-
             if (self.terminal.updateCursor(.{ .row = y + 1, .col = x + 1 })) {
                 updates.cursor += 1;
             }
-            if (self.terminal.updateAttributes(terminal_state)) {
+            if (self.terminal.updateAttributes(cell_fore.attributes)) {
                 updates.state += 1;
             }
 
