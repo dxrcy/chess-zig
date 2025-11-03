@@ -8,9 +8,9 @@ board: Board,
 active: Player,
 focus: Position,
 
-pub const Player = enum {
-    white,
-    black,
+pub const Player = enum(u8) {
+    white = 0,
+    black = 1,
 };
 
 pub const Position = struct {

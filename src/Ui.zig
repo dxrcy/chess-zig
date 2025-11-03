@@ -103,7 +103,7 @@ pub fn render(self: *Self, state: *const State) void {
                         col * tile.WIDTH + x + tile.PADDING_LEFT,
                         .{
                             .char = string[y * Piece.HEIGHT + x],
-                            .fg = if (row > 3) .blue else .red,
+                            .fg = if (piece.player == .white) .blue else .red,
                             .bold = true,
                         },
                     );
