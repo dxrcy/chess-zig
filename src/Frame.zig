@@ -18,16 +18,10 @@ cells: [HEIGHT * WIDTH]Cell,
 
 const Char = u21;
 
-pub fn new(default_cell: Cell.Options) Self {
-    var self = Self{
-        .cells = undefined,
+pub fn new() Self {
+    return Self{
+        .cells = [1]Cell{.{}} ** (HEIGHT * WIDTH),
     };
-    for (0..HEIGHT) |y| {
-        for (0..WIDTH) |x| {
-            self.set(y, x, default_cell);
-        }
-    }
-    return self;
 }
 
 pub fn set(self: *Self, y: usize, x: usize, options: Cell.Options) void {
@@ -39,8 +33,8 @@ pub fn get(self: *Self, y: usize, x: usize) *Cell {
 }
 
 pub const Cell = struct {
-    char: Char,
-    attributes: Terminal.Attributes,
+    char: Char = ' ',
+    attributes: Attributes = .{},
 
     pub fn eql(lhs: Cell, rhs: Cell) bool {
         return lhs.char == rhs.char and lhs.attributes.eql(rhs.attributes);

@@ -44,7 +44,7 @@ const Rect = struct { y: usize, x: usize, h: usize, w: usize };
 pub fn new(ascii: bool) Self {
     return Self{
         .terminal = Terminal.new(),
-        .frames = [1]Frame{Frame.new(.{})} ** 2,
+        .frames = [1]Frame{Frame.new()} ** 2,
         .current_frame = 0,
         .ascii = ascii,
     };
