@@ -28,6 +28,7 @@ original_termios: ?posix.termios,
 /// Most methods do **not** modify these fields, eg. [`print`].
 // TODO: Move to some state struct
 cursor: Cursor,
+style: Style,
 fg: Color,
 bg: Color,
 
@@ -40,10 +41,10 @@ pub const Cursor = struct {
     }
 };
 
-pub const Style = enum(u8) {
-    bold = 1,
-    dim = 2,
-    italic = 3,
+pub const Style = packed struct {
+    bold: bool = false,
+    dim: bool = false,
+    italic: bool = false,
 };
 
 /// Use [`Color.unset`] for default color.
@@ -65,8 +66,9 @@ pub fn new() Self {
     return Self{
         .original_termios = null,
         .cursor = .{ .row = 0, .col = 0 },
-        .fg = .white,
-        .bg = .black,
+        .style = Style{},
+        .fg = .unset,
+        .bg = .unset,
     };
 }
 
@@ -135,13 +137,29 @@ pub fn updateCursor(self: *Self, cursor: Cursor) bool {
     return true;
 }
 
+/// Returns `true` if style attributes changed.
+pub fn updateStyle(self: *Self, style: Style) bool {
+    var any_changed = false;
+
+    // TODO: Support all attributes
+    if (style.bold != self.style.bold) {
+        any_changed = true;
+        self.print("\x1b[{d}m", .{@as(u8, if (style.bold) 1 else 22)});
+    }
+
+    if (any_changed) {
+        self.style = style;
+    }
+    return any_changed;
+}
+
 /// Returns `true` if foreground color changed.
 pub fn updateForeground(self: *Self, fg: Color) bool {
     if (fg == self.fg) {
         return false;
     }
+    self.print("\x1b[3{d}m", .{@intFromEnum(fg)});
     self.fg = fg;
-    self.print("\x1b[3{d}m", .{@intFromEnum(self.fg)});
     return true;
 }
 
@@ -150,18 +168,7 @@ pub fn updateBackground(self: *Self, bg: Color) bool {
     if (bg == self.bg) {
         return false;
     }
+    self.print("\x1b[4{d}m", .{@intFromEnum(bg)});
     self.bg = bg;
-    self.print("\x1b[4{d}m", .{@intFromEnum(self.bg)});
     return true;
-}
-
-// TODO: Remove
-pub fn resetStyle(self: *Self) void {
-    // Clear bold, dim, italic
-    self.print("\x1b[22m\x1b[23m", .{});
-}
-
-// TODO: Replace with `updateStyle` or something better
-pub fn setStyle(self: *Self, style: Style) void {
-    self.print("\x1b[{d}m", .{@intFromEnum(style)});
 }

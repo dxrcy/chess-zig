@@ -199,6 +199,7 @@ pub fn draw(self: *Self) void {
         cursor: usize = 0,
         fg: usize = 0,
         bg: usize = 0,
+        style: usize = 0,
         print: usize = 0,
     };
     var updates = Updates{};
@@ -216,13 +217,13 @@ pub fn draw(self: *Self) void {
                 updates.cursor += 1;
             }
 
-            // TODO: Save style field in `Terminal`
+            const style = Terminal.Style{
+                .bold = cell_fore.bold,
+            };
 
-            self.terminal.resetStyle();
-            if (cell_fore.bold) {
-                self.terminal.setStyle(.bold);
+            if (self.terminal.updateStyle(style)) {
+                updates.style += 1;
             }
-
             if (self.terminal.updateForeground(cell_fore.fg)) {
                 updates.fg += 1;
             }
@@ -238,7 +239,7 @@ pub fn draw(self: *Self) void {
         }
     }
 
-    self.terminal.resetStyle();
+    _ = self.terminal.updateStyle(.{});
     _ = self.terminal.updateForeground(.unset);
     _ = self.terminal.updateBackground(.unset);
 
@@ -251,7 +252,6 @@ pub fn draw(self: *Self) void {
         });
     }
 
-    self.terminal.resetStyle();
     self.terminal.flush();
 
     self.swapFrames();
