@@ -7,7 +7,7 @@ const posix = std.posix;
 const State = @import("State.zig");
 const Board = State.Board;
 const Piece = State.Board.Piece;
-const Position = State.Position;
+const Tile = State.Tile;
 
 const Terminal = @import("Terminal.zig");
 
@@ -18,7 +18,7 @@ frames: [2]Frame,
 current_frame: u1,
 ascii: bool,
 
-pub const Tile = struct {
+pub const tile_size = struct {
     pub const WIDTH: usize = Piece.WIDTH + PADDING_LEFT + PADDING_RIGHT;
     pub const HEIGHT: usize = Piece.HEIGHT + PADDING_TOP + PADDING_BOTTOM;
 
@@ -78,7 +78,7 @@ pub fn render(self: *Self, state: *const State) void {
     // Board tile
     for (0..Board.SIZE) |rank| {
         for (0..Board.SIZE) |file| {
-            const tile = Position{ .rank = rank, .file = file };
+            const tile = Tile{ .rank = rank, .file = file };
             self.renderRectSolid(getTileRect(tile), .{
                 .char = ' ',
                 .bg = if (tile.isEven()) .black else .bright_black,
@@ -89,7 +89,7 @@ pub fn render(self: *Self, state: *const State) void {
     // Board piece icons
     for (0..Board.SIZE) |rank| {
         for (0..Board.SIZE) |file| {
-            const tile = Position{ .rank = rank, .file = file };
+            const tile = Tile{ .rank = rank, .file = file };
             const piece = state.board.get(tile) orelse
                 continue;
             const string = piece.string();
@@ -97,8 +97,8 @@ pub fn render(self: *Self, state: *const State) void {
             for (0..Piece.HEIGHT) |y| {
                 for (0..Piece.WIDTH) |x| {
                     frame.set(
-                        rank * Tile.HEIGHT + y + Tile.PADDING_TOP,
-                        file * Tile.WIDTH + x + Tile.PADDING_LEFT,
+                        rank * tile_size.HEIGHT + y + tile_size.PADDING_TOP,
+                        file * tile_size.WIDTH + x + tile_size.PADDING_LEFT,
                         .{
                             .char = string[y * Piece.HEIGHT + x],
                             .fg = if (piece.player == .white) .cyan else .red,
@@ -124,12 +124,12 @@ pub fn render(self: *Self, state: *const State) void {
     });
 }
 
-fn getTileRect(position: Position) Rect {
+fn getTileRect(tile: Tile) Rect {
     return Rect{
-        .y = position.rank * Tile.HEIGHT,
-        .x = position.file * Tile.WIDTH,
-        .h = Tile.HEIGHT,
-        .w = Tile.WIDTH,
+        .y = tile.rank * tile_size.HEIGHT,
+        .x = tile.file * tile_size.WIDTH,
+        .h = tile_size.HEIGHT,
+        .w = tile_size.WIDTH,
     };
 }
 

@@ -2,8 +2,8 @@ const Self = @This();
 
 const State = @import("State.zig");
 const Board = State.Board;
-const Piece = State.Board.Piece;
-const Position = State.Position;
+const Piece = State.Piece;
+const Tile = State.Tile;
 
 const Terminal = @import("Terminal.zig");
 const Attributes = Terminal.Attributes;
@@ -11,8 +11,8 @@ const Attributes = Terminal.Attributes;
 const Ui = @import("Ui.zig");
 
 // TODO: Use larger size
-pub const HEIGHT = Board.SIZE * Ui.Tile.HEIGHT;
-pub const WIDTH = Board.SIZE * Ui.Tile.WIDTH;
+pub const HEIGHT = Board.SIZE * Ui.tile_size.HEIGHT;
+pub const WIDTH = Board.SIZE * Ui.tile_size.WIDTH;
 
 cells: [HEIGHT * WIDTH]Cell,
 

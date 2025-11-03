@@ -3,12 +3,13 @@ const Self = @This();
 const std = @import("std");
 
 pub const Board = @import("Board.zig");
-pub const Position = Board.Position;
+pub const Tile = Board.Tile;
+pub const Piece = Board.Piece;
 
 board: Board,
 turn: Player,
-focus: Position,
-selected: ?Position,
+focus: Tile,
+selected: ?Tile,
 
 pub const Player = enum(u8) {
     white = 0,
@@ -58,7 +59,7 @@ pub fn toggleSelection(self: *Self) void {
     }
 }
 
-fn swapTile(self: *Self, from: Position, to: Position) void {
+fn swapTile(self: *Self, from: Tile, to: Tile) void {
     const temp = self.board.get(to);
     self.board.set(to, self.board.get(from));
     self.board.set(from, temp);

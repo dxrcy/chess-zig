@@ -31,38 +31,37 @@ pub fn new() Self {
     return self;
 }
 
-pub fn get(self: *const Self, position: Position) ?Piece {
-    assert(position.rank < SIZE);
-    assert(position.file < SIZE);
+pub fn get(self: *const Self, tile: Tile) ?Piece {
+    assert(tile.rank < SIZE);
+    assert(tile.file < SIZE);
 
-    const value = self.tiles[position.rank * SIZE + position.file];
+    const value = self.tiles[tile.rank * SIZE + tile.file];
     if (value == 0) {
         return null;
     }
     return Piece.fromInt(value);
 }
 
-pub fn set(self: *Self, position: Position, piece: ?Piece) void {
-    assert(position.rank < SIZE);
-    assert(position.file < SIZE);
+pub fn set(self: *Self, tile: Tile, piece: ?Piece) void {
+    assert(tile.rank < SIZE);
+    assert(tile.file < SIZE);
 
     const value = if (piece) |piece_unwrapped|
         piece_unwrapped.toInt()
     else
         0;
-    self.tiles[position.rank * SIZE + position.file] = value;
+    self.tiles[tile.rank * SIZE + tile.file] = value;
 }
 
-// TODO: Rename `Tile`
-pub const Position = struct {
+pub const Tile = struct {
     rank: usize,
     file: usize,
 
-    pub fn eql(lhs: Position, rhs: Position) bool {
+    pub fn eql(lhs: Tile, rhs: Tile) bool {
         return lhs.rank == rhs.rank and lhs.file == rhs.file;
     }
 
-    pub fn isEven(self: Position) bool {
+    pub fn isEven(self: Tile) bool {
         return (self.rank + self.file) % 2 == 0;
     }
 };
