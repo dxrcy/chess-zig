@@ -225,13 +225,11 @@ pub fn draw(self: *Self) void {
         }
     }
 
-    _ = self.terminal.updateStyle(.{});
-    _ = self.terminal.updateForeground(.unset);
-    _ = self.terminal.updateBackground(.unset);
     _ = self.terminal.updateAttributes(.{});
 
     inline for (@typeInfo(Updates).@"struct".fields, 0..) |field, i| {
         _ = self.terminal.updateCursor(.{ .row = Frame.HEIGHT + i + 1, .col = 1 });
+
         self.terminal.print("\r\x1b[K", .{});
         self.terminal.print("{s}\t{}", .{
             field.name,
@@ -240,7 +238,6 @@ pub fn draw(self: *Self) void {
     }
 
     self.terminal.flush();
-
     self.swapFrames();
 }
 
