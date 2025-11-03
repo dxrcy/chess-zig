@@ -8,7 +8,16 @@ const State = @import("State.zig");
 const Ui = @import("Ui.zig");
 
 pub fn main() !void {
-    const ascii = false;
+    var args = std.process.args();
+    _ = args.next();
+
+    var ascii = false;
+
+    while (args.next()) |arg| {
+        if (std.mem.eql(u8, arg, "--ascii")) {
+            ascii = true;
+        }
+    }
 
     var ui = Ui.new(ascii);
     try ui.enter();

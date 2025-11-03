@@ -254,14 +254,9 @@ pub fn swapFrames(self: *Self) void {
 
 pub fn getEdge(self: *const Self, edge: Edge) u21 {
     return if (self.ascii) switch (edge) {
-        .left => '|',
-        .right => '|',
-        .top => '-',
-        .bottom => '-',
-        .top_left => ',',
-        .top_right => ',',
-        .bottom_left => '\'',
-        .bottom_right => '\'',
+        .left, .right => '|',
+        .top, .bottom => '-',
+        else => '+',
     } else switch (edge) {
         .left => '▌',
         .right => '▐',
