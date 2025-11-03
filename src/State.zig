@@ -3,6 +3,7 @@ const Self = @This();
 const std = @import("std");
 
 pub const Board = @import("Board.zig");
+pub const Position = Board.Position;
 
 board: Board,
 turn: Player,
@@ -12,19 +13,6 @@ selected: ?Position,
 pub const Player = enum(u8) {
     white = 0,
     black = 1,
-};
-
-pub const Position = struct {
-    rank: usize,
-    file: usize,
-
-    pub fn eql(lhs: Position, rhs: Position) bool {
-        return lhs.rank == rhs.rank and lhs.file == rhs.file;
-    }
-
-    pub fn isEven(self: Position) bool {
-        return (self.rank + self.file) % 2 == 0;
-    }
 };
 
 pub fn new() Self {
@@ -71,8 +59,7 @@ pub fn toggleSelection(self: *Self) void {
 }
 
 fn swapTile(self: *Self, from: Position, to: Position) void {
-    const a = self.board.get(from.rank, from.file);
-    const b = self.board.get(to.rank, to.file);
-    self.board.set(to.rank, to.file, a);
-    self.board.set(from.rank, from.file, b);
+    const temp = self.board.get(to);
+    self.board.set(to, self.board.get(from));
+    self.board.set(from, temp);
 }

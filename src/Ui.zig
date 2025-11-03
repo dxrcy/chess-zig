@@ -87,17 +87,18 @@ pub fn render(self: *Self, state: *const State) void {
     }
 
     // Board piece icons
-    for (0..Board.SIZE) |row| {
-        for (0..Board.SIZE) |col| {
-            const piece = state.board.get(row, col) orelse
+    for (0..Board.SIZE) |rank| {
+        for (0..Board.SIZE) |file| {
+            const tile = Position{ .rank = rank, .file = file };
+            const piece = state.board.get(tile) orelse
                 continue;
             const string = piece.string();
 
             for (0..Piece.HEIGHT) |y| {
                 for (0..Piece.WIDTH) |x| {
                     frame.set(
-                        row * Tile.HEIGHT + y + Tile.PADDING_TOP,
-                        col * Tile.WIDTH + x + Tile.PADDING_LEFT,
+                        rank * Tile.HEIGHT + y + Tile.PADDING_TOP,
+                        file * Tile.WIDTH + x + Tile.PADDING_LEFT,
                         .{
                             .char = string[y * Piece.HEIGHT + x],
                             .fg = if (piece.player == .white) .cyan else .red,

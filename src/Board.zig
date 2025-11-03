@@ -10,6 +10,63 @@ pub const SIZE: usize = 8;
 
 tiles: [SIZE * SIZE]u8,
 
+pub fn new() Self {
+    var self = Self{
+        .tiles = [_]u8{0} ** SIZE ** SIZE,
+    };
+    for (0..8) |x| {
+        self.set(.{ .rank = 1, .file = x }, .{ .kind = .pawn, .player = .white });
+        self.set(.{ .rank = 6, .file = x }, .{ .kind = .pawn, .player = .black });
+    }
+    for ([2]usize{ 0, 7 }, [2]Player{ .white, .black }) |y, player| {
+        self.set(.{ .rank = y, .file = 0 }, .{ .kind = .rook, .player = player });
+        self.set(.{ .rank = y, .file = 1 }, .{ .kind = .knight, .player = player });
+        self.set(.{ .rank = y, .file = 2 }, .{ .kind = .bishop, .player = player });
+        self.set(.{ .rank = y, .file = 3 }, .{ .kind = .king, .player = player });
+        self.set(.{ .rank = y, .file = 4 }, .{ .kind = .queen, .player = player });
+        self.set(.{ .rank = y, .file = 5 }, .{ .kind = .bishop, .player = player });
+        self.set(.{ .rank = y, .file = 6 }, .{ .kind = .knight, .player = player });
+        self.set(.{ .rank = y, .file = 7 }, .{ .kind = .rook, .player = player });
+    }
+    return self;
+}
+
+pub fn get(self: *const Self, position: Position) ?Piece {
+    assert(position.rank < SIZE);
+    assert(position.file < SIZE);
+
+    const value = self.tiles[position.rank * SIZE + position.file];
+    if (value == 0) {
+        return null;
+    }
+    return Piece.fromInt(value);
+}
+
+pub fn set(self: *Self, position: Position, piece: ?Piece) void {
+    assert(position.rank < SIZE);
+    assert(position.file < SIZE);
+
+    const value = if (piece) |piece_unwrapped|
+        piece_unwrapped.toInt()
+    else
+        0;
+    self.tiles[position.rank * SIZE + position.file] = value;
+}
+
+// TODO: Rename `Tile`
+pub const Position = struct {
+    rank: usize,
+    file: usize,
+
+    pub fn eql(lhs: Position, rhs: Position) bool {
+        return lhs.rank == rhs.rank and lhs.file == rhs.file;
+    }
+
+    pub fn isEven(self: Position) bool {
+        return (self.rank + self.file) % 2 == 0;
+    }
+};
+
 pub const Piece = struct {
     kind: Kind,
     player: Player,
@@ -62,48 +119,3 @@ pub const Piece = struct {
             (@intFromEnum(self.player) << 3);
     }
 };
-
-pub fn new() Self {
-    var self = Self{
-        .tiles = [_]u8{0} ** SIZE ** SIZE,
-    };
-    for (0..8) |x| {
-        self.set(1, x, .{ .kind = .pawn, .player = .white });
-        self.set(6, x, .{ .kind = .pawn, .player = .black });
-    }
-    for ([2]usize{ 0, 7 }, [2]Player{ .white, .black }) |y, player| {
-        self.set(y, 0, .{ .kind = .rook, .player = player });
-        self.set(y, 1, .{ .kind = .knight, .player = player });
-        self.set(y, 2, .{ .kind = .bishop, .player = player });
-        self.set(y, 3, .{ .kind = .king, .player = player });
-        self.set(y, 4, .{ .kind = .queen, .player = player });
-        self.set(y, 5, .{ .kind = .bishop, .player = player });
-        self.set(y, 6, .{ .kind = .knight, .player = player });
-        self.set(y, 7, .{ .kind = .rook, .player = player });
-    }
-    return self;
-}
-
-// TODO: Use `Position` param
-pub fn get(self: *const Self, row: usize, col: usize) ?Piece {
-    assert(row < SIZE);
-    assert(col < SIZE);
-
-    const value = self.tiles[row * SIZE + col];
-    if (value == 0) {
-        return null;
-    }
-
-    return Piece.fromInt(value);
-}
-
-pub fn set(self: *Self, row: usize, col: usize, piece: ?Piece) void {
-    assert(row < SIZE);
-    assert(col < SIZE);
-
-    const value = if (piece) |piece_unwrapped|
-        piece_unwrapped.toInt()
-    else
-        0;
-    self.tiles[row * SIZE + col] = value;
-}
