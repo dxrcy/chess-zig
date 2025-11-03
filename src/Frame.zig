@@ -18,6 +18,26 @@ cells: [HEIGHT * WIDTH]Cell,
 
 const Char = u21;
 
+pub fn new(default_cell: Cell.Options) Self {
+    var self = Self{
+        .cells = undefined,
+    };
+    for (0..HEIGHT) |y| {
+        for (0..WIDTH) |x| {
+            self.set(y, x, default_cell);
+        }
+    }
+    return self;
+}
+
+pub fn set(self: *Self, y: usize, x: usize, options: Cell.Options) void {
+    self.cells[y * WIDTH + x].apply(options);
+}
+
+pub fn get(self: *Self, y: usize, x: usize) *Cell {
+    return &self.cells[y * WIDTH + x];
+}
+
 pub const Cell = struct {
     char: Char,
     attributes: Terminal.Attributes,
@@ -59,23 +79,3 @@ pub const Cell = struct {
         }
     };
 };
-
-pub fn new(default_cell: Cell.Options) Self {
-    var self = Self{
-        .cells = undefined,
-    };
-    for (0..HEIGHT) |y| {
-        for (0..WIDTH) |x| {
-            self.set(y, x, default_cell);
-        }
-    }
-    return self;
-}
-
-pub fn set(self: *Self, y: usize, x: usize, options: Cell.Options) void {
-    self.cells[y * WIDTH + x].apply(options);
-}
-
-pub fn get(self: *Self, y: usize, x: usize) *Cell {
-    return &self.cells[y * WIDTH + x];
-}

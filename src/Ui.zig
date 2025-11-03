@@ -57,7 +57,7 @@ pub fn enter(self: *Self) !void {
     self.terminal.flush();
 
     try self.terminal.saveTermios();
-    var termios = self.terminal.getTermios() orelse unreachable;
+    var termios = self.terminal.original_termios orelse unreachable;
     termios.lflag.ICANON = false;
     termios.lflag.ECHO = false;
     termios.lflag.ISIG = false;
@@ -114,8 +114,8 @@ pub fn render(self: *Self, state: *const State) void {
 
     // Cursor
     self.renderRectHighlight(.{
-        .y = state.cursor.row * tile.HEIGHT,
-        .x = state.cursor.col * tile.WIDTH,
+        .y = state.focus.rank * tile.HEIGHT,
+        .x = state.focus.file * tile.WIDTH,
         .h = tile.HEIGHT,
         .w = tile.WIDTH,
     }, .{
@@ -225,10 +225,9 @@ pub fn draw(self: *Self) void {
         }
     }
 
-    _ = self.terminal.updateAttributes(.{});
-
     inline for (@typeInfo(Updates).@"struct".fields, 0..) |field, i| {
         _ = self.terminal.updateCursor(.{ .row = Frame.HEIGHT + i + 1, .col = 1 });
+        _ = self.terminal.updateAttributes(.{});
 
         self.terminal.print("\r\x1b[K", .{});
         self.terminal.print("{s}\t{}", .{

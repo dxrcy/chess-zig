@@ -43,6 +43,12 @@ pub const Attributes = struct {
     bg: Color = .unset,
     style: Style = .{},
 
+    pub fn eql(lhs: Attributes, rhs: Attributes) bool {
+        return lhs.fg == rhs.fg and
+            lhs.bg == rhs.bg and
+            lhs.style.eql(rhs.style);
+    }
+
     /// Use [`Color.unset`] for default color.
     // TODO: Add bright colors
     pub const Color = enum(u8) {
@@ -68,12 +74,6 @@ pub const Attributes = struct {
                 lhs.italic == rhs.italic;
         }
     };
-
-    pub fn eql(lhs: Attributes, rhs: Attributes) bool {
-        return lhs.fg == rhs.fg and
-            lhs.bg == rhs.bg and
-            lhs.style.eql(rhs.style);
-    }
 };
 
 pub fn new() Self {
@@ -97,11 +97,6 @@ pub fn restoreTermios(self: *Self) !void {
     };
     try self.setTermios(termios);
     self.original_termios = null;
-}
-
-// TODO: Rename or something .. misleading names!
-pub fn getTermios(self: *Self) ?posix.termios {
-    return self.original_termios;
 }
 
 pub fn setTermios(self: *Self, termios: posix.termios) !void {

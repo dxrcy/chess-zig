@@ -6,7 +6,7 @@ pub const Board = @import("Board.zig");
 
 board: Board,
 active: Player,
-cursor: Position,
+focus: Position,
 
 pub const Player = enum {
     white,
@@ -14,45 +14,43 @@ pub const Player = enum {
 };
 
 pub const Position = struct {
-    // TODO: Rename fields to `y` and `x` to avoid confusion with
-    // `Terminal.Cursor`
-    row: usize,
-    col: usize,
+    rank: usize,
+    file: usize,
 
     pub fn eql(lhs: Position, rhs: Position) bool {
-        return lhs.row == rhs.row and lhs.col == rhs.col;
+        return lhs.rank == rhs.rank and lhs.file == rhs.file;
     }
 };
 
 pub fn new() Self {
     return Self{
         .board = Board.new(),
-        .cursor = .{ .row = 1, .col = 1 },
+        .focus = .{ .rank = 1, .file = 1 },
         .active = .black,
     };
 }
 
-pub fn move(self: *Self, direction: enum { left, right, up, down }) void {
+pub fn moveFocus(self: *Self, direction: enum { left, right, up, down }) void {
     switch (direction) {
-        .left => if (self.cursor.col == 0) {
-            self.cursor.col = Board.SIZE - 1;
+        .left => if (self.focus.file == 0) {
+            self.focus.file = Board.SIZE - 1;
         } else {
-            self.cursor.col -= 1;
+            self.focus.file -= 1;
         },
-        .right => if (self.cursor.col >= Board.SIZE - 1) {
-            self.cursor.col = 0;
+        .right => if (self.focus.file >= Board.SIZE - 1) {
+            self.focus.file = 0;
         } else {
-            self.cursor.col += 1;
+            self.focus.file += 1;
         },
-        .up => if (self.cursor.row == 0) {
-            self.cursor.row = Board.SIZE - 1;
+        .up => if (self.focus.rank == 0) {
+            self.focus.rank = Board.SIZE - 1;
         } else {
-            self.cursor.row -= 1;
+            self.focus.rank -= 1;
         },
-        .down => if (self.cursor.row >= Board.SIZE - 1) {
-            self.cursor.row = 0;
+        .down => if (self.focus.rank >= Board.SIZE - 1) {
+            self.focus.rank = 0;
         } else {
-            self.cursor.row += 1;
+            self.focus.rank += 1;
         },
     }
 }

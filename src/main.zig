@@ -32,10 +32,10 @@ pub fn main() !void {
         switch (buffer[0]) {
             0x03 => break,
 
-            'h' => state.move(.left),
-            'l' => state.move(.right),
-            'k' => state.move(.up),
-            'j' => state.move(.down),
+            'h' => state.moveFocus(.left),
+            'l' => state.moveFocus(.right),
+            'k' => state.moveFocus(.up),
+            'j' => state.moveFocus(.down),
 
             0x20 => {
                 state.active = if (state.active == .black) .white else .black;
