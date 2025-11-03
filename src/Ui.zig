@@ -211,7 +211,7 @@ pub fn draw(self: *Self) void {
                 continue;
             }
 
-            const terminal_state = Terminal.State{
+            const terminal_state = Terminal.Attributes{
                 .style = .{
                     .bold = cell_fore.bold,
                 },
@@ -222,7 +222,7 @@ pub fn draw(self: *Self) void {
             if (self.terminal.updateCursor(.{ .row = y + 1, .col = x + 1 })) {
                 updates.cursor += 1;
             }
-            if (self.terminal.updateState(terminal_state)) {
+            if (self.terminal.updateAttributes(terminal_state)) {
                 updates.state += 1;
             }
 
@@ -237,7 +237,7 @@ pub fn draw(self: *Self) void {
     _ = self.terminal.updateStyle(.{});
     _ = self.terminal.updateForeground(.unset);
     _ = self.terminal.updateBackground(.unset);
-    _ = self.terminal.updateState(.{});
+    _ = self.terminal.updateAttributes(.{});
 
     inline for (@typeInfo(Updates).@"struct".fields, 0..) |field, i| {
         _ = self.terminal.updateCursor(.{ .row = Frame.HEIGHT + i + 1, .col = 1 });
