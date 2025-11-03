@@ -52,15 +52,23 @@ pub const Attributes = struct {
     /// Use [`Color.unset`] for default color.
     // TODO: Add bright colors
     pub const Color = enum(u8) {
-        black = 0,
-        red = 1,
-        green = 2,
-        yellow = 3,
-        blue = 4,
-        magenta = 5,
-        cyan = 6,
-        white = 7,
-        unset = 9,
+        black = 30,
+        red = 31,
+        green = 32,
+        yellow = 33,
+        blue = 34,
+        magenta = 35,
+        cyan = 36,
+        white = 37,
+        unset = 39,
+        bright_black = 90,
+        bright_red = 91,
+        bright_green = 92,
+        bright_yellow = 93,
+        bright_blue = 94,
+        bright_magenta = 95,
+        bright_cyan = 96,
+        bright_white = 97,
     };
 
     pub const Style = packed struct {
@@ -149,12 +157,12 @@ pub fn updateAttributes(self: *Self, attributes: Attributes) bool {
     var any_changed = false;
 
     if (attributes.fg != self.attributes.fg) {
-        self.print("\x1b[3{d}m", .{@intFromEnum(attributes.fg)});
+        self.print("\x1b[{d}m", .{@intFromEnum(attributes.fg) + 0});
         any_changed = true;
     }
 
     if (attributes.bg != self.attributes.bg) {
-        self.print("\x1b[4{d}m", .{@intFromEnum(attributes.bg)});
+        self.print("\x1b[{d}m", .{@intFromEnum(attributes.bg) + 10});
         any_changed = true;
     }
 
