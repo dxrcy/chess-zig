@@ -212,20 +212,22 @@ pub fn draw(self: *Self) void {
             }
 
             const terminal_state = Terminal.State{
-                .cursor = .{ .row = y + 1, .col = x + 1 },
-                .style = Terminal.Style{
+                .style = .{
                     .bold = cell_fore.bold,
                 },
                 .fg = cell_fore.fg,
                 .bg = cell_fore.bg,
             };
 
+            if (self.terminal.updateCursor(.{ .row = y + 1, .col = x + 1 })) {
+                updates.cursor += 1;
+            }
             if (self.terminal.updateState(terminal_state)) {
                 updates.state += 1;
             }
 
             self.terminal.print("{u}", .{cell_fore.char});
-            self.terminal.state.cursor.col += 1;
+            self.terminal.cursor.col += 1;
             updates.print += 1;
 
             cell_back.* = cell_fore.*;

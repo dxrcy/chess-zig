@@ -24,11 +24,13 @@ const stdout = struct {
 };
 
 original_termios: ?posix.termios,
-/// Most methods do **not** modify this field. eg. [`print`].
+/// Most methods do **not** modify this field. Eg. [`print`].
+cursor: Cursor = .{ .row = 0, .col = 0 },
+/// Most methods do **not** modify this field. Eg. [`print`].
 state: State,
 
+// TODO: Rename
 pub const State = struct {
-    cursor: Cursor = .{ .row = 0, .col = 0 },
     style: Style = .{},
     fg: Color = .unset,
     bg: Color = .unset,
@@ -37,6 +39,7 @@ pub const State = struct {
 pub const Cursor = struct {
     row: usize,
     col: usize,
+
     pub fn eql(lhs: Cursor, rhs: Cursor) bool {
         return lhs.row == rhs.row and lhs.col == rhs.col;
     }
@@ -125,13 +128,19 @@ pub fn clearEntireScreen(self: *Self) void {
     self.print("\x1b[2J", .{});
 }
 
+/// Returns `true` if cursor changed.
+// TODO: Remove
+pub fn updateCursor(self: *Self, cursor: Cursor) bool {
+    if (cursor.eql(self.cursor)) {
+        return false;
+    }
+    self.print("\x1b[{};{}H", .{ cursor.row, cursor.col });
+    self.cursor = cursor;
+    return true;
+}
+
 pub fn updateState(self: *Self, state: State) bool {
     var any_changed = false;
-
-    if (!state.cursor.eql(self.state.cursor)) {
-        self.print("\x1b[{};{}H", .{ state.cursor.row, state.cursor.col });
-        any_changed = true;
-    }
 
     // TODO: Support all style attributes
     if (state.style.bold != self.state.style.bold) {
@@ -151,17 +160,6 @@ pub fn updateState(self: *Self, state: State) bool {
 
     self.state = state;
     return any_changed;
-}
-
-/// Returns `true` if cursor changed.
-// TODO: Remove
-pub fn updateCursor(self: *Self, cursor: Cursor) bool {
-    if (cursor.eql(self.state.cursor)) {
-        return false;
-    }
-    self.print("\x1b[{};{}H", .{ cursor.row, cursor.col });
-    self.state.cursor = cursor;
-    return true;
 }
 
 /// Returns `true` if style attributes changed.
