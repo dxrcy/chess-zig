@@ -84,7 +84,7 @@ pub fn render(self: *Self, state: *const State) void {
                 .h = tile.HEIGHT,
                 .w = tile.WIDTH,
             }, .{
-                .bg = if ((row + col) % 2 == 0) .black else .white,
+                .bg = if ((row + col) % 2 == 0) .black else .bright_black,
             });
         }
     }
@@ -103,7 +103,7 @@ pub fn render(self: *Self, state: *const State) void {
                         col * tile.WIDTH + x + tile.PADDING_LEFT,
                         .{
                             .char = string[y * Piece.HEIGHT + x],
-                            .fg = .green,
+                            .fg = if (row > 3) .blue else .red,
                             .bold = true,
                         },
                     );
@@ -119,7 +119,8 @@ pub fn render(self: *Self, state: *const State) void {
         .h = tile.HEIGHT,
         .w = tile.WIDTH,
     }, .{
-        .fg = if (state.active == .white) .blue else .red,
+        .fg = if (state.active == .white) .bright_white else .white,
+        .bold = true,
     });
 }
 
@@ -196,7 +197,7 @@ fn renderRectHighlight(
 pub fn draw(self: *Self) void {
     const Updates = struct {
         cursor: usize = 0,
-        state: usize = 0,
+        attr: usize = 0,
         print: usize = 0,
     };
     var updates = Updates{};
@@ -214,7 +215,7 @@ pub fn draw(self: *Self) void {
                 updates.cursor += 1;
             }
             if (self.terminal.updateAttributes(cell_fore.attributes)) {
-                updates.state += 1;
+                updates.attr += 1;
             }
 
             self.terminal.print("{u}", .{cell_fore.char});
