@@ -10,7 +10,6 @@ const Piece = State.Board.Piece;
 const Position = State.Position;
 
 const Terminal = @import("Terminal.zig");
-const Color = Terminal.Color;
 
 const Frame = @import("Frame.zig");
 
@@ -127,7 +126,7 @@ pub fn render(self: *Self, state: *const State) void {
 fn renderRectSolid(
     self: *Self,
     rect: Rect,
-    options: Frame.CellOptions,
+    options: Frame.Cell.Options,
 ) void {
     var frame = self.getForeFrame();
 
@@ -145,7 +144,7 @@ fn renderRectSolid(
 fn renderRectHighlight(
     self: *Self,
     rect: Rect,
-    options: Frame.CellOptions,
+    options: Frame.Cell.Options,
 ) void {
     var frame = self.getForeFrame();
 

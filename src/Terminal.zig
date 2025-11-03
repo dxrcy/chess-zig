@@ -43,38 +43,36 @@ pub const Attributes = struct {
     bg: Color = .unset,
     style: Style = .{},
 
+    /// Use [`Color.unset`] for default color.
+    // TODO: Add bright colors
+    pub const Color = enum(u8) {
+        black = 0,
+        red = 1,
+        green = 2,
+        yellow = 3,
+        blue = 4,
+        magenta = 5,
+        cyan = 6,
+        white = 7,
+        unset = 9,
+    };
+
+    pub const Style = packed struct {
+        bold: bool = false,
+        dim: bool = false,
+        italic: bool = false,
+
+        pub fn eql(lhs: Style, rhs: Style) bool {
+            return lhs.bold == rhs.bold and
+                lhs.dim == rhs.dim and
+                lhs.italic == rhs.italic;
+        }
+    };
+
     pub fn eql(lhs: Attributes, rhs: Attributes) bool {
         return lhs.fg == rhs.fg and
             lhs.bg == rhs.bg and
             lhs.style.eql(rhs.style);
-    }
-};
-
-/// Use [`Color.unset`] for default color.
-// TODO: Add bright colors
-// TODO: Move to child of `Attributes`
-pub const Color = enum(u8) {
-    black = 0,
-    red = 1,
-    green = 2,
-    yellow = 3,
-    blue = 4,
-    magenta = 5,
-    cyan = 6,
-    white = 7,
-    unset = 9,
-};
-
-// TODO: Move to child of `Attributes`
-pub const Style = packed struct {
-    bold: bool = false,
-    dim: bool = false,
-    italic: bool = false,
-
-    pub fn eql(lhs: Style, rhs: Style) bool {
-        return lhs.bold == rhs.bold and
-            lhs.dim == rhs.dim and
-            lhs.italic == rhs.italic;
     }
 };
 
@@ -142,7 +140,6 @@ pub fn clearEntireScreen(self: *Self) void {
 }
 
 /// Returns `true` if cursor changed.
-// TODO: Remove
 pub fn updateCursor(self: *Self, cursor: Cursor) bool {
     if (cursor.eql(self.cursor)) {
         return false;
@@ -152,6 +149,7 @@ pub fn updateCursor(self: *Self, cursor: Cursor) bool {
     return true;
 }
 
+/// Returns `true` if any attributes changed.
 pub fn updateAttributes(self: *Self, attributes: Attributes) bool {
     var any_changed = false;
 
@@ -177,7 +175,7 @@ pub fn updateAttributes(self: *Self, attributes: Attributes) bool {
 
 /// Returns `true` if style attributes changed.
 // TODO: Remove
-pub fn updateStyle(self: *Self, style: Style) bool {
+pub fn updateStyle(self: *Self, style: Attributes.Style) bool {
     var any_changed = false;
 
     // TODO: Support all attributes
@@ -194,7 +192,7 @@ pub fn updateStyle(self: *Self, style: Style) bool {
 
 /// Returns `true` if foreground color changed.
 // TODO: Remove
-pub fn updateForeground(self: *Self, fg: Color) bool {
+pub fn updateForeground(self: *Self, fg: Attributes.Color) bool {
     if (fg == self.attributes.fg) {
         return false;
     }
@@ -205,7 +203,7 @@ pub fn updateForeground(self: *Self, fg: Color) bool {
 
 /// Returns `true` if background color changed.
 // TODO: Remove
-pub fn updateBackground(self: *Self, bg: Color) bool {
+pub fn updateBackground(self: *Self, bg: Attributes.Color) bool {
     if (bg == self.attributes.bg) {
         return false;
     }

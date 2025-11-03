@@ -7,7 +7,6 @@ const Position = State.Position;
 
 const Terminal = @import("Terminal.zig");
 const Attributes = Terminal.Attributes;
-const Color = Terminal.Color;
 
 const Ui = @import("Ui.zig");
 
@@ -19,34 +18,49 @@ cells: [HEIGHT * WIDTH]Cell,
 
 const Char = u21;
 
-const Cell = struct {
+pub const Cell = struct {
     char: Char,
     attributes: Terminal.Attributes,
 
     pub fn eql(lhs: Cell, rhs: Cell) bool {
         return lhs.char == rhs.char and lhs.attributes.eql(rhs.attributes);
     }
-};
 
-// TODO: Add more style attributes
-pub const CellOptions = struct {
-    char: ?Char = null,
-    fg: ?Color = null,
-    bg: ?Color = null,
-    bold: ?bool = null,
-
-    /// Merge two [`CellOptions`], preferring values of `rhs`.
-    pub fn join(lhs: CellOptions, rhs: CellOptions) CellOptions {
-        return CellOptions{
-            .char = rhs.char orelse lhs.char orelse null,
-            .fg = rhs.fg orelse lhs.fg orelse null,
-            .bg = rhs.bg orelse lhs.bg orelse null,
-            .bold = rhs.bold orelse lhs.bold orelse null,
-        };
+    pub fn apply(self: *Cell, options: Options) void {
+        if (options.char) |char| {
+            self.char = char;
+        }
+        if (options.fg) |fg| {
+            self.attributes.fg = fg;
+        }
+        if (options.bg) |bg| {
+            self.attributes.bg = bg;
+        }
+        if (options.bold) |bold| {
+            self.attributes.style.bold = bold;
+        }
     }
+
+    // TODO: Add more style attributes
+    pub const Options = struct {
+        char: ?Char = null,
+        fg: ?Attributes.Color = null,
+        bg: ?Attributes.Color = null,
+        bold: ?bool = null,
+
+        /// Merge two [`CellOptions`], preferring values of `rhs`.
+        pub fn join(lhs: Options, rhs: Options) Options {
+            return Options{
+                .char = rhs.char orelse lhs.char orelse null,
+                .fg = rhs.fg orelse lhs.fg orelse null,
+                .bg = rhs.bg orelse lhs.bg orelse null,
+                .bold = rhs.bold orelse lhs.bold orelse null,
+            };
+        }
+    };
 };
 
-pub fn new(default_cell: CellOptions) Self {
+pub fn new(default_cell: Cell.Options) Self {
     var self = Self{
         .cells = undefined,
     };
@@ -58,26 +72,8 @@ pub fn new(default_cell: CellOptions) Self {
     return self;
 }
 
-// TODO: Move logic to `Cell.apply`
-pub fn set(
-    self: *Self,
-    y: usize,
-    x: usize,
-    options: CellOptions,
-) void {
-    var cell = &self.cells[y * WIDTH + x];
-    if (options.char) |char| {
-        cell.char = char;
-    }
-    if (options.fg) |fg| {
-        cell.attributes.fg = fg;
-    }
-    if (options.bg) |bg| {
-        cell.attributes.bg = bg;
-    }
-    if (options.bold) |bold| {
-        cell.attributes.style.bold = bold;
-    }
+pub fn set(self: *Self, y: usize, x: usize, options: Cell.Options) void {
+    self.cells[y * WIDTH + x].apply(options);
 }
 
 pub fn get(self: *Self, y: usize, x: usize) *Cell {
