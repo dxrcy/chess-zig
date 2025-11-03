@@ -84,6 +84,7 @@ pub fn new() Self {
     return self;
 }
 
+// TODO: Use `Position` param
 pub fn get(self: *const Self, row: usize, col: usize) ?Piece {
     assert(row < SIZE);
     assert(col < SIZE);

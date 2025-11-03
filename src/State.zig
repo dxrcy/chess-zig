@@ -62,9 +62,17 @@ pub fn moveFocus(self: *Self, direction: enum { left, right, up, down }) void {
 }
 
 pub fn toggleSelection(self: *Self) void {
-    if (self.selected == null) {
-        self.selected = self.focus;
-    } else {
+    if (self.selected) |selected| {
+        self.swapTile(selected, self.focus);
         self.selected = null;
+    } else {
+        self.selected = self.focus;
     }
+}
+
+fn swapTile(self: *Self, from: Position, to: Position) void {
+    const a = self.board.get(from.rank, from.file);
+    const b = self.board.get(to.rank, to.file);
+    self.board.set(to.rank, to.file, a);
+    self.board.set(from.rank, from.file, b);
 }
