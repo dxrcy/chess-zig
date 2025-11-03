@@ -18,7 +18,7 @@ frames: [2]Frame,
 current_frame: u1,
 ascii: bool,
 
-pub const tile = struct {
+pub const Tile = struct {
     pub const WIDTH: usize = Piece.WIDTH + PADDING_LEFT + PADDING_RIGHT;
     pub const HEIGHT: usize = Piece.HEIGHT + PADDING_TOP + PADDING_BOTTOM;
 
@@ -76,15 +76,12 @@ pub fn render(self: *Self, state: *const State) void {
     const frame = self.getForeFrame();
 
     // Board tile
-    for (0..Board.SIZE) |row| {
-        for (0..Board.SIZE) |col| {
-            self.renderRectSolid(.{
-                .y = row * tile.HEIGHT,
-                .x = col * tile.WIDTH,
-                .h = tile.HEIGHT,
-                .w = tile.WIDTH,
-            }, .{
-                .bg = if ((row + col) % 2 == 0) .black else .bright_black,
+    for (0..Board.SIZE) |rank| {
+        for (0..Board.SIZE) |file| {
+            const tile = Position{ .rank = rank, .file = file };
+            self.renderRectSolid(getTileRect(tile), .{
+                .char = ' ',
+                .bg = if (tile.isEven()) .black else .bright_black,
             });
         }
     }
@@ -99,11 +96,11 @@ pub fn render(self: *Self, state: *const State) void {
             for (0..Piece.HEIGHT) |y| {
                 for (0..Piece.WIDTH) |x| {
                     frame.set(
-                        row * tile.HEIGHT + y + tile.PADDING_TOP,
-                        col * tile.WIDTH + x + tile.PADDING_LEFT,
+                        row * Tile.HEIGHT + y + Tile.PADDING_TOP,
+                        col * Tile.WIDTH + x + Tile.PADDING_LEFT,
                         .{
                             .char = string[y * Piece.HEIGHT + x],
-                            .fg = if (piece.player == .white) .blue else .red,
+                            .fg = if (piece.player == .white) .cyan else .red,
                             .bold = true,
                         },
                     );
@@ -112,16 +109,27 @@ pub fn render(self: *Self, state: *const State) void {
         }
     }
 
-    // Cursor
-    self.renderRectHighlight(.{
-        .y = state.focus.rank * tile.HEIGHT,
-        .x = state.focus.file * tile.WIDTH,
-        .h = tile.HEIGHT,
-        .w = tile.WIDTH,
-    }, .{
-        .fg = if (state.active == .white) .bright_white else .white,
+    // Selected
+    if (state.selected) |selected| {
+        self.renderRectSolid(getTileRect(selected), .{
+            .bg = .white,
+        });
+    }
+
+    // Focus
+    self.renderRectHighlight(getTileRect(state.focus), .{
+        .fg = .bright_white,
         .bold = true,
     });
+}
+
+fn getTileRect(position: Position) Rect {
+    return Rect{
+        .y = position.rank * Tile.HEIGHT,
+        .x = position.file * Tile.WIDTH,
+        .h = Tile.HEIGHT,
+        .w = Tile.WIDTH,
+    };
 }
 
 fn renderRectSolid(
@@ -133,11 +141,7 @@ fn renderRectSolid(
 
     for (0..rect.h) |y| {
         for (0..rect.w) |x| {
-            frame.set(
-                rect.y + y,
-                rect.x + x,
-                options.join(.{ .char = ' ' }),
-            );
+            frame.set(rect.y + y, rect.x + x, options);
         }
     }
 }

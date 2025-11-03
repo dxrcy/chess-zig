@@ -46,9 +46,7 @@ pub fn main() !void {
             'k' => state.moveFocus(.up),
             'j' => state.moveFocus(.down),
 
-            0x20 => {
-                state.active = if (state.active == .black) .white else .black;
-            },
+            0x20 => state.toggleSelection(),
 
             else => {},
         }

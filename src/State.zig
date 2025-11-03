@@ -5,8 +5,9 @@ const std = @import("std");
 pub const Board = @import("Board.zig");
 
 board: Board,
-active: Player,
+turn: Player,
 focus: Position,
+selected: ?Position,
 
 pub const Player = enum(u8) {
     white = 0,
@@ -20,13 +21,18 @@ pub const Position = struct {
     pub fn eql(lhs: Position, rhs: Position) bool {
         return lhs.rank == rhs.rank and lhs.file == rhs.file;
     }
+
+    pub fn isEven(self: Position) bool {
+        return (self.rank + self.file) % 2 == 0;
+    }
 };
 
 pub fn new() Self {
     return Self{
         .board = Board.new(),
+        .turn = .black,
         .focus = .{ .rank = 1, .file = 1 },
-        .active = .black,
+        .selected = null,
     };
 }
 
@@ -52,5 +58,13 @@ pub fn moveFocus(self: *Self, direction: enum { left, right, up, down }) void {
         } else {
             self.focus.rank += 1;
         },
+    }
+}
+
+pub fn toggleSelection(self: *Self) void {
+    if (self.selected == null) {
+        self.selected = self.focus;
+    } else {
+        self.selected = null;
     }
 }
