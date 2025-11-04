@@ -52,7 +52,10 @@ pub fn moveFocus(self: *Self, direction: enum { left, right, up, down }) void {
 
 pub fn toggleSelection(self: *Self) void {
     const selected = self.selected orelse {
-        if (self.board.get(self.focus) != null) {
+        const piece = self.board.get(self.focus);
+        if (piece != null and
+            piece.?.player == self.turn)
+        {
             self.selected = self.focus;
         }
         return;
@@ -63,8 +66,19 @@ pub fn toggleSelection(self: *Self) void {
     if (self.board.get(selected) == null) {
         return;
     }
+    if (selected.eql(self.focus)) {
+        return;
+    }
 
-    const temp = self.board.get(self.focus);
-    self.board.set(self.focus, self.board.get(selected));
-    self.board.set(selected, temp);
+    const piece = self.board.get(selected);
+    if (piece == null or
+        piece.?.player != self.turn)
+    {
+        return;
+    }
+
+    self.board.set(selected, self.board.get(self.focus));
+    self.board.set(self.focus, piece);
+
+    self.turn = if (self.turn == .white) .black else .white;
 }
