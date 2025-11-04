@@ -122,9 +122,5 @@ pub const Piece = struct {
 };
 
 pub fn getAvailableMoves(board: *const Self, origin: Tile) moves.AvailableMoves {
-    return moves.AvailableMoves{
-        .board = board,
-        .origin = origin,
-        .index = 0,
-    };
+    return moves.AvailableMoves.new(board, origin);
 }

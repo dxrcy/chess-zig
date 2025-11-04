@@ -1,5 +1,3 @@
-const Self = @This();
-
 const std = @import("std");
 const assert = std.debug.assert;
 
@@ -13,9 +11,21 @@ pub const Move = struct {
 };
 
 pub const AvailableMoves = struct {
+    const Self = @This();
+
     board: *const Board,
     origin: Tile,
     index: usize,
+    line_index: ?usize,
+
+    pub fn new(board: *const Board, origin: Tile) Self {
+        return Self{
+            .board = board,
+            .origin = origin,
+            .index = 0,
+            .line_index = null,
+        };
+    }
 
     pub fn next(self: *AvailableMoves) ?Move {
         const piece = self.board.get(self.origin) orelse
@@ -24,96 +34,163 @@ pub const AvailableMoves = struct {
         const rules = getMoveRules(piece.kind);
 
         while (self.index < rules.len) {
-            const move = rules[self.index];
-            self.index += 1;
+            const rule = rules[self.index];
 
-            const destination = move.offset.applyTo(self.origin, piece) orelse {
-                continue;
-            };
+            switch (rule.position) {
+                .offset => |offset| {
+                    self.index += 1;
+                    if (self.calculateMove(
+                        rule,
+                        piece,
+                        offset.applyTo(self.origin, piece),
+                    )) |move| {
+                        return move;
+                    }
+                },
 
-            const context = Requirement.Context{
-                .board = self.board,
-                .piece = piece,
-                .origin = self.origin,
-                .destination = destination,
-                .rule = move,
-            };
+                .line => |line| {
+                    const line_index = self.line_index orelse 0;
+                    self.line_index = line_index + 1;
+                    assert(line_index <= Board.SIZE * Board.SIZE);
 
-            if (move.requirement.isSatisfied(context)) {
-                return Move{
-                    .destination = destination,
-                };
+                    if (self.calculateMove(
+                        rule,
+                        piece,
+                        line.scale(line_index + 1).applyTo(self.origin),
+                    )) |move| {
+                        if (self.board.get(move.destination) != null) {
+                            self.index += 1;
+                            self.line_index = null;
+                        }
+                        return move;
+                    } else {
+                        self.index += 1;
+                        self.line_index = null;
+                    }
+                },
             }
         }
 
         return null;
     }
+
+    fn calculateMove(
+        self: *const Self,
+        rule: MoveRule,
+        piece: Piece,
+        destination_opt: ?Tile,
+    ) ?Move {
+        const destination = destination_opt orelse {
+            return null;
+        };
+
+        const context = Requirement.Context{
+            .board = self.board,
+            .piece = piece,
+            .origin = self.origin,
+            .destination = destination,
+            .rule = rule,
+        };
+
+        if (!rule.requirement.isSatisfied(context)) {
+            return null;
+        }
+
+        return Move{
+            .destination = destination,
+        };
+    }
 };
 
 pub const MoveRule = struct {
-    offset: Offset,
+    position: union(enum) {
+        offset: Offset,
+        line: RealOffset,
+    },
     requirement: Requirement = .{},
     /// If piece to take is different to destination (eg. in en-passant).
     take_alt: ?Offset = null,
 };
 
 pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
-    // TODO: Support all pieces obviously
     return switch (piece) {
         .pawn => &[_]MoveRule{
             .{
-                .offset = .{ .advance = .{ .rank = 1, .file = 0 } },
+                .position = .{ .offset = .{ .advance = .{ .rank = 1, .file = 0 } } },
                 .requirement = .{ .take = .never },
             },
             .{
-                .offset = .{ .advance = .{ .rank = 2, .file = 0 } },
+                .position = .{ .offset = .{ .advance = .{ .rank = 2, .file = 0 } } },
                 .requirement = .{ .take = .never, .home_rank = 1 },
             },
             .{
-                .offset = .{ .advance = .{ .rank = 1, .file = -1 } },
+                .position = .{ .offset = .{ .advance = .{ .rank = 1, .file = -1 } } },
                 .requirement = .{ .take = .always },
             },
             .{
-                .offset = .{ .advance = .{ .rank = 1, .file = 1 } },
+                .position = .{ .offset = .{ .advance = .{ .rank = 1, .file = 1 } } },
                 .requirement = .{ .take = .always },
             },
             .{
-                .offset = .{ .advance = .{ .rank = 1, .file = -1 } },
+                .position = .{ .offset = .{ .advance = .{ .rank = 1, .file = -1 } } },
                 .requirement = .{ .take = .always },
                 .take_alt = .{ .real = .{ .rank = 0, .file = -1 } },
             },
             .{
-                .offset = .{ .advance = .{ .rank = 1, .file = 1 } },
+                .position = .{ .offset = .{ .advance = .{ .rank = 1, .file = 1 } } },
                 .requirement = .{ .take = .always },
                 .take_alt = .{ .real = .{ .rank = 0, .file = 1 } },
             },
         },
         .knight => &[_]MoveRule{
-            .{ .offset = .{ .real = .{ .rank = -1, .file = -2 } } },
-            .{ .offset = .{ .real = .{ .rank = -2, .file = -1 } } },
-            .{ .offset = .{ .real = .{ .rank = -1, .file = 2 } } },
-            .{ .offset = .{ .real = .{ .rank = -2, .file = 1 } } },
-            .{ .offset = .{ .real = .{ .rank = 1, .file = -2 } } },
-            .{ .offset = .{ .real = .{ .rank = 2, .file = -1 } } },
-            .{ .offset = .{ .real = .{ .rank = 1, .file = 2 } } },
-            .{ .offset = .{ .real = .{ .rank = 2, .file = 1 } } },
+            .{ .position = .{ .offset = .{ .real = .{ .rank = -1, .file = -2 } } } },
+            .{ .position = .{ .offset = .{ .real = .{ .rank = -2, .file = -1 } } } },
+            .{ .position = .{ .offset = .{ .real = .{ .rank = -1, .file = 2 } } } },
+            .{ .position = .{ .offset = .{ .real = .{ .rank = -2, .file = 1 } } } },
+            .{ .position = .{ .offset = .{ .real = .{ .rank = 1, .file = -2 } } } },
+            .{ .position = .{ .offset = .{ .real = .{ .rank = 2, .file = -1 } } } },
+            .{ .position = .{ .offset = .{ .real = .{ .rank = 1, .file = 2 } } } },
+            .{ .position = .{ .offset = .{ .real = .{ .rank = 2, .file = 1 } } } },
         },
         .king => &[_]MoveRule{
-            .{ .offset = .{ .real = .{ .rank = -1, .file = -1 } } },
-            .{ .offset = .{ .real = .{ .rank = -1, .file = 0 } } },
-            .{ .offset = .{ .real = .{ .rank = -1, .file = 1 } } },
-            .{ .offset = .{ .real = .{ .rank = 0, .file = -1 } } },
-            .{ .offset = .{ .real = .{ .rank = 0, .file = 1 } } },
-            .{ .offset = .{ .real = .{ .rank = 1, .file = -1 } } },
-            .{ .offset = .{ .real = .{ .rank = 1, .file = 0 } } },
-            .{ .offset = .{ .real = .{ .rank = 1, .file = 1 } } },
+            .{ .position = .{ .offset = .{ .real = .{ .rank = -1, .file = -1 } } } },
+            .{ .position = .{ .offset = .{ .real = .{ .rank = -1, .file = 0 } } } },
+            .{ .position = .{ .offset = .{ .real = .{ .rank = -1, .file = 1 } } } },
+            .{ .position = .{ .offset = .{ .real = .{ .rank = 0, .file = -1 } } } },
+            .{ .position = .{ .offset = .{ .real = .{ .rank = 0, .file = 1 } } } },
+            .{ .position = .{ .offset = .{ .real = .{ .rank = 1, .file = -1 } } } },
+            .{ .position = .{ .offset = .{ .real = .{ .rank = 1, .file = 0 } } } },
+            .{ .position = .{ .offset = .{ .real = .{ .rank = 1, .file = 1 } } } },
         },
-        else => &[_]MoveRule{},
+        .rook => &[_]MoveRule{
+            .{ .position = .{ .line = .{ .rank = -1, .file = 0 } } },
+            .{ .position = .{ .line = .{ .rank = 1, .file = 0 } } },
+            .{ .position = .{ .line = .{ .rank = 0, .file = -1 } } },
+            .{ .position = .{ .line = .{ .rank = 0, .file = 1 } } },
+        },
+        .bishop => &[_]MoveRule{
+            .{ .position = .{ .line = .{ .rank = -1, .file = -1 } } },
+            .{ .position = .{ .line = .{ .rank = -1, .file = 1 } } },
+            .{ .position = .{ .line = .{ .rank = 1, .file = -1 } } },
+            .{ .position = .{ .line = .{ .rank = 1, .file = 1 } } },
+        },
+        .queen => &[_]MoveRule{
+            .{ .position = .{ .line = .{ .rank = -1, .file = 0 } } },
+            .{ .position = .{ .line = .{ .rank = 1, .file = 0 } } },
+            .{ .position = .{ .line = .{ .rank = 0, .file = -1 } } },
+            .{ .position = .{ .line = .{ .rank = 0, .file = 1 } } },
+            .{ .position = .{ .line = .{ .rank = -1, .file = -1 } } },
+            .{ .position = .{ .line = .{ .rank = -1, .file = 1 } } },
+            .{ .position = .{ .line = .{ .rank = 1, .file = -1 } } },
+            .{ .position = .{ .line = .{ .rank = 1, .file = 1 } } },
+        },
     };
 }
 
 /// Use `null` for any unrestricted fields.
 const Requirement = struct {
+    const Self = @This();
+
     /// Whether a piece must take (`always`), must **not** take (`never`).
     take: ?enum { always, never } = null,
     /// Rank index, counting from home side (black:7 = white:0 and vice-versa).
@@ -123,7 +200,7 @@ const Requirement = struct {
     // ...also possible to add a fn pointer field for any custom behavior
     // (eg. castling).
 
-    pub fn isSatisfied(self: *const Requirement, context: Context) bool {
+    pub fn isSatisfied(self: *const Self, context: Context) bool {
         // Can never take/overwrite own piece
         if (context.board.get(context.destination)) |piece_take| {
             if (piece_take.player == context.piece.player) {
@@ -135,7 +212,7 @@ const Requirement = struct {
             self.isHomeRankSatisfied(context);
     }
 
-    fn isTakeSatisfied(self: *const Requirement, context: Context) bool {
+    fn isTakeSatisfied(self: *const Self, context: Context) bool {
         const take = self.take orelse {
             return true;
         };
@@ -148,7 +225,7 @@ const Requirement = struct {
         };
     }
 
-    fn isHomeRankSatisfied(self: *const Requirement, context: Context) bool {
+    fn isHomeRankSatisfied(self: *const Self, context: Context) bool {
         const home_rank = self.home_rank orelse {
             return true;
         };
@@ -217,10 +294,12 @@ const Offset = union(enum) {
 // TODO: Rename?
 // TODO: Document
 const RealOffset = struct {
+    const Self = @This();
+
     rank: isize,
     file: isize,
 
-    pub fn applyTo(self: RealOffset, tile: Tile) ?Tile {
+    pub fn applyTo(self: Self, tile: Tile) ?Tile {
         const rank = @as(isize, @intCast(tile.rank)) + self.rank;
         const file = @as(isize, @intCast(tile.file)) + self.file;
 
@@ -231,6 +310,13 @@ const RealOffset = struct {
         return Tile{
             .rank = @intCast(rank),
             .file = @intCast(file),
+        };
+    }
+
+    pub fn scale(self: Self, amount: usize) Self {
+        return Self{
+            .rank = self.rank * @as(isize, @intCast(amount)),
+            .file = self.file * @as(isize, @intCast(amount)),
         };
     }
 };
