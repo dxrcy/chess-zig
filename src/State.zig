@@ -58,12 +58,11 @@ pub fn toggleSelection(self: *Self) void {
 
     self.selected = null;
 
-    if (self.board.get(selected) == null or
-        self.board.get(self.focus) != null)
-    {
+    if (self.board.get(selected) == null) {
         return;
     }
 
+    const temp = self.board.get(self.focus);
     self.board.set(self.focus, self.board.get(selected));
-    self.board.set(selected, null);
+    self.board.set(selected, temp);
 }
