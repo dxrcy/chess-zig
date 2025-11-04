@@ -20,7 +20,7 @@ pub fn new() Self {
     return Self{
         .board = Board.new(),
         .turn = .black,
-        .focus = .{ .rank = 1, .file = 1 },
+        .focus = .{ .rank = 3, .file = 3 },
         .selected = null,
     };
 }
@@ -52,7 +52,9 @@ pub fn moveFocus(self: *Self, direction: enum { left, right, up, down }) void {
 
 pub fn toggleSelection(self: *Self) void {
     const selected = self.selected orelse {
-        self.selected = self.focus;
+        if (self.board.get(self.focus) != null) {
+            self.selected = self.focus;
+        }
         return;
     };
 

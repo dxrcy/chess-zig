@@ -10,6 +10,7 @@ const Piece = State.Board.Piece;
 const Tile = State.Tile;
 
 const Terminal = @import("Terminal.zig");
+const Color = Terminal.Attributes.Color;
 
 const Frame = @import("Frame.zig");
 
@@ -79,9 +80,13 @@ pub fn render(self: *Self, state: *const State) void {
     for (0..Board.SIZE) |rank| {
         for (0..Board.SIZE) |file| {
             const tile = Tile{ .rank = rank, .file = file };
+            const bg: Color = if (tile.isEven()) .black else .bright_black;
             self.renderRectSolid(getTileRect(tile), .{
                 .char = ' ',
-                .bg = if (tile.isEven()) .black else .bright_black,
+                .bg = bg,
+            });
+            self.renderRectHighlight(getTileRect(tile), .{
+                .fg = bg,
             });
         }
     }
@@ -114,19 +119,19 @@ pub fn render(self: *Self, state: *const State) void {
     if (state.selected) |selected| {
         var available_moves = state.board.getAvailableMoves(selected);
         while (available_moves.next()) |available| {
-            self.renderRectHighlight(getTileRect(available.destination), .{
-                .fg = .green,
+            self.renderRectSolid(getTileRect(available.destination), .{
+                .bg = .white,
             });
         }
 
         self.renderRectSolid(getTileRect(selected), .{
-            .bg = .white,
+            .bg = .bright_white,
         });
     }
 
     // Focus
     self.renderRectHighlight(getTileRect(state.focus), .{
-        .fg = .bright_white,
+        .fg = if (state.turn == .white) .cyan else .red,
         .bold = true,
     });
 }

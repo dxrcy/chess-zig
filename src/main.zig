@@ -48,6 +48,8 @@ pub fn main() !void {
 
             0x20 => state.toggleSelection(),
 
+            't' => state.turn = if (state.turn == .white) .black else .white,
+
             else => {},
         }
     }

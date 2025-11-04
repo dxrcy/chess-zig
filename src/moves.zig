@@ -52,7 +52,7 @@ pub const AvailableMoves = struct {
 
 pub const MoveRule = struct {
     offset: Offset,
-    requirement: Requirement,
+    requirement: Requirement = .{},
     /// If piece to take is different to destination (eg. in en-passant).
     take_alt: ?Offset = null,
 };
@@ -87,6 +87,26 @@ pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
                 .requirement = .{ .take = .always },
                 .take_alt = .{ .real = .{ .rank = 0, .file = 1 } },
             },
+        },
+        .knight => &[_]MoveRule{
+            .{ .offset = .{ .real = .{ .rank = -1, .file = -2 } } },
+            .{ .offset = .{ .real = .{ .rank = -2, .file = -1 } } },
+            .{ .offset = .{ .real = .{ .rank = -1, .file = 2 } } },
+            .{ .offset = .{ .real = .{ .rank = -2, .file = 1 } } },
+            .{ .offset = .{ .real = .{ .rank = 1, .file = -2 } } },
+            .{ .offset = .{ .real = .{ .rank = 2, .file = -1 } } },
+            .{ .offset = .{ .real = .{ .rank = 1, .file = 2 } } },
+            .{ .offset = .{ .real = .{ .rank = 2, .file = 1 } } },
+        },
+        .king => &[_]MoveRule{
+            .{ .offset = .{ .real = .{ .rank = -1, .file = -1 } } },
+            .{ .offset = .{ .real = .{ .rank = -1, .file = 0 } } },
+            .{ .offset = .{ .real = .{ .rank = -1, .file = 1 } } },
+            .{ .offset = .{ .real = .{ .rank = 0, .file = -1 } } },
+            .{ .offset = .{ .real = .{ .rank = 0, .file = 1 } } },
+            .{ .offset = .{ .real = .{ .rank = 1, .file = -1 } } },
+            .{ .offset = .{ .real = .{ .rank = 1, .file = 0 } } },
+            .{ .offset = .{ .real = .{ .rank = 1, .file = 1 } } },
         },
         else => &[_]MoveRule{},
     };
