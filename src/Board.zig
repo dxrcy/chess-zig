@@ -148,12 +148,12 @@ pub const AvailableMoves = struct {
                 continue;
             };
 
-            if (move.requirement.isSatisfied(
-                self.board,
-                piece,
-                self.tile,
-                tile_future,
-            )) {
+            if (move.requirement.isSatisfied(.{
+                .board = self.board,
+                .piece = piece,
+                .tile_current = self.tile,
+                .tile_future = tile_future,
+            })) {
                 return tile_future;
             }
         }
@@ -242,20 +242,23 @@ const Requirement = struct {
     /// For a pawn's first move.
     home_rank: ?usize = null,
 
-    // TODO: Add custom field for special behaviour (eg. en passant, castling).
-
-    // TODO: (DO LATER) Depending on how many parameters are added, consider
-    // using a context struct.
-    pub fn isSatisfied(
-        self: *const Requirement,
+    const Context = struct {
         board: *const Board,
         piece: Piece,
+        // TODO: Rename?
         tile_current: Tile,
         tile_future: Tile,
+    };
+
+    // TODO: Add custom field for special behaviour (eg. en passant, castling).
+
+    pub fn isSatisfied(
+        self: *const Requirement,
+        context: Context,
     ) bool {
         // Can never take/overwrite own piece
-        if (board.get(tile_future)) |piece_take| {
-            if (piece_take.player == piece.player) {
+        if (context.board.get(context.tile_future)) |piece_take| {
+            if (piece_take.player == context.piece.player) {
                 return false;
             }
         }
@@ -265,16 +268,16 @@ const Requirement = struct {
                 .always => true,
                 .never => false,
             };
-            if (should_take != willTake(board, piece, tile_future)) {
+            if (should_take != willTake(context)) {
                 return false;
             }
         }
 
         if (self.home_rank) |home_rank| {
-            const actual_home_rank = if (piece.player == .white)
-                tile_current.rank
+            const actual_home_rank = if (context.piece.player == .white)
+                context.tile_current.rank
             else
-                Board.SIZE - tile_current.rank - 1;
+                Board.SIZE - context.tile_current.rank - 1;
             if (home_rank != actual_home_rank) {
                 return false;
             }
@@ -283,14 +286,10 @@ const Requirement = struct {
         return true;
     }
 
-    fn willTake(
-        board: *const Board,
-        piece: Piece,
-        tile_future: Tile,
-    ) bool {
-        const piece_take = board.get(tile_future) orelse
+    fn willTake(context: Context) bool {
+        const piece_take = context.board.get(context.tile_future) orelse
             return false;
-        assert(piece_take.player != piece.player);
+        assert(piece_take.player != context.piece.player);
         return true;
     }
 };
