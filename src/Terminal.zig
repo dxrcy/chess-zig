@@ -50,7 +50,6 @@ pub const Attributes = struct {
     }
 
     /// Use [`Color.unset`] for default color.
-    // TODO: Add bright colors
     pub const Color = enum(u8) {
         black = 30,
         red = 31,

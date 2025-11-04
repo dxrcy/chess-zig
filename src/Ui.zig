@@ -110,8 +110,15 @@ pub fn render(self: *Self, state: *const State) void {
         }
     }
 
-    // Selected
+    // Selected, available moves
     if (state.selected) |selected| {
+        var available_moves = state.board.getAvailableMoves(selected);
+        while (available_moves.next()) |available| {
+            self.renderRectHighlight(getTileRect(available), .{
+                .fg = .green,
+            });
+        }
+
         self.renderRectSolid(getTileRect(selected), .{
             .bg = .white,
         });

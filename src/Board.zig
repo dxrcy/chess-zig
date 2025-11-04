@@ -14,19 +14,19 @@ pub fn new() Self {
     var self = Self{
         .tiles = [_]u8{0} ** SIZE ** SIZE,
     };
-    for (0..8) |x| {
-        self.set(.{ .rank = 1, .file = x }, .{ .kind = .pawn, .player = .white });
-        self.set(.{ .rank = 6, .file = x }, .{ .kind = .pawn, .player = .black });
+    for (0..8) |file| {
+        self.set(.{ .rank = 1, .file = file }, .{ .kind = .pawn, .player = .white });
+        self.set(.{ .rank = 6, .file = file }, .{ .kind = .pawn, .player = .black });
     }
-    for ([2]usize{ 0, 7 }, [2]Player{ .white, .black }) |y, player| {
-        self.set(.{ .rank = y, .file = 0 }, .{ .kind = .rook, .player = player });
-        self.set(.{ .rank = y, .file = 1 }, .{ .kind = .knight, .player = player });
-        self.set(.{ .rank = y, .file = 2 }, .{ .kind = .bishop, .player = player });
-        self.set(.{ .rank = y, .file = 3 }, .{ .kind = .king, .player = player });
-        self.set(.{ .rank = y, .file = 4 }, .{ .kind = .queen, .player = player });
-        self.set(.{ .rank = y, .file = 5 }, .{ .kind = .bishop, .player = player });
-        self.set(.{ .rank = y, .file = 6 }, .{ .kind = .knight, .player = player });
-        self.set(.{ .rank = y, .file = 7 }, .{ .kind = .rook, .player = player });
+    for ([2]usize{ 0, 7 }, [2]Player{ .white, .black }) |rank, player| {
+        self.set(.{ .rank = rank, .file = 0 }, .{ .kind = .rook, .player = player });
+        self.set(.{ .rank = rank, .file = 1 }, .{ .kind = .knight, .player = player });
+        self.set(.{ .rank = rank, .file = 2 }, .{ .kind = .bishop, .player = player });
+        self.set(.{ .rank = rank, .file = 3 }, .{ .kind = .king, .player = player });
+        self.set(.{ .rank = rank, .file = 4 }, .{ .kind = .queen, .player = player });
+        self.set(.{ .rank = rank, .file = 5 }, .{ .kind = .bishop, .player = player });
+        self.set(.{ .rank = rank, .file = 6 }, .{ .kind = .knight, .player = player });
+        self.set(.{ .rank = rank, .file = 7 }, .{ .kind = .rook, .player = player });
     }
     return self;
 }
@@ -116,5 +116,181 @@ pub const Piece = struct {
     pub fn toInt(self: Piece) u8 {
         return @intFromEnum(self.kind) +
             (@intFromEnum(self.player) << 3);
+    }
+};
+
+pub fn getAvailableMoves(board: *const Self, tile: Tile) AvailableMoves {
+    return AvailableMoves{
+        .board = board,
+        .tile = tile,
+        .index = 0,
+    };
+}
+
+pub const AvailableMoves = struct {
+    const Board = Self;
+
+    board: *const Board,
+    tile: Tile,
+    index: usize,
+
+    pub fn next(self: *AvailableMoves) ?Tile {
+        const piece = self.board.get(self.tile) orelse
+            return null;
+
+        const moves = getMoves(piece.kind);
+
+        while (self.index < moves.len) {
+            const move = moves[self.index];
+            self.index += 1;
+
+            const tile_future = move.offset.applyTo(self.tile, piece) orelse {
+                continue;
+            };
+
+            if (move.requirement.isSatisfied(
+                self.board,
+                piece,
+                self.tile,
+                tile_future,
+            )) {
+                return tile_future;
+            }
+        }
+
+        return null;
+    }
+};
+
+fn getMoves(piece: Piece.Kind) []const Move {
+    // TODO: Support all pieces obviously
+    return switch (piece) {
+        .pawn => &[_]Move{
+            .{
+                .offset = .{ .advance = .{ .rank = 1, .file = 0 } },
+                .requirement = .{ .take = .never },
+            },
+            .{
+                .offset = .{ .advance = .{ .rank = 2, .file = 0 } },
+                .requirement = .{ .take = .never, .home_rank = 1 },
+            },
+            .{
+                .offset = .{ .advance = .{ .rank = 1, .file = -1 } },
+                .requirement = .{ .take = .always },
+            },
+            .{
+                .offset = .{ .advance = .{ .rank = 1, .file = 1 } },
+                .requirement = .{ .take = .always },
+            },
+        },
+        else => &[_]Move{},
+    };
+}
+
+const Move = struct {
+    offset: Offset,
+    requirement: Requirement,
+};
+
+/// An offset which is dependant on the piece's attributes (eg. color).
+// TODO: (DO LATER) Depending on how many variants are added, this abstraction
+// could possibly be removed or improved somehow.
+const Offset = union(enum) {
+    advance: RealOffset,
+
+    pub fn applyTo(self: Offset, tile: Tile, piece: Piece) ?Tile {
+        switch (self) {
+            .advance => |offset| {
+                var real_offset = offset;
+                real_offset.rank *= if (piece.player == .white) 1 else -1;
+                return real_offset.applyTo(tile);
+            },
+        }
+    }
+};
+
+// TODO: Rename?
+// TODO: Document
+const RealOffset = struct {
+    const Board = Self;
+
+    rank: isize,
+    file: isize,
+
+    pub fn applyTo(self: RealOffset, tile: Tile) ?Tile {
+        const rank = @as(isize, @intCast(tile.rank)) + self.rank;
+        const file = @as(isize, @intCast(tile.file)) + self.file;
+
+        if (rank < 0 or file < 0 or rank >= Board.SIZE or file >= Board.SIZE) {
+            return null;
+        }
+
+        return Tile{
+            .rank = @intCast(rank),
+            .file = @intCast(file),
+        };
+    }
+};
+
+/// Use `null` for any unrestricted fields.
+const Requirement = struct {
+    const Board = Self;
+
+    /// Whether a piece must take (`always`), must **not** take (`never`).
+    take: ?enum { always, never } = null,
+    /// Rank index, counting from home side (black:7 = white:0 and vice-versa).
+    /// For a pawn's first move.
+    home_rank: ?usize = null,
+
+    // TODO: Add custom field for special behaviour (eg. en passant, castling).
+
+    // TODO: (DO LATER) Depending on how many parameters are added, consider
+    // using a context struct.
+    pub fn isSatisfied(
+        self: *const Requirement,
+        board: *const Board,
+        piece: Piece,
+        tile_current: Tile,
+        tile_future: Tile,
+    ) bool {
+        // Can never take/overwrite own piece
+        if (board.get(tile_future)) |piece_take| {
+            if (piece_take.player == piece.player) {
+                return false;
+            }
+        }
+
+        if (self.take) |take| {
+            const should_take = switch (take) {
+                .always => true,
+                .never => false,
+            };
+            if (should_take != willTake(board, piece, tile_future)) {
+                return false;
+            }
+        }
+
+        if (self.home_rank) |home_rank| {
+            const actual_home_rank = if (piece.player == .white)
+                tile_current.rank
+            else
+                Board.SIZE - tile_current.rank - 1;
+            if (home_rank != actual_home_rank) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    fn willTake(
+        board: *const Board,
+        piece: Piece,
+        tile_future: Tile,
+    ) bool {
+        const piece_take = board.get(tile_future) orelse
+            return false;
+        assert(piece_take.player != piece.player);
+        return true;
     }
 };
