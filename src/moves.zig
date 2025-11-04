@@ -115,9 +115,9 @@ pub const MoveRule = struct {
         offset: Offset,
         line: RealOffset,
     },
-    requirement: Requirement = .{},
     /// If piece to take is different to destination (eg. in en-passant).
     take_alt: ?Offset = null,
+    requirement: Requirement = .{},
 };
 
 pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
@@ -129,7 +129,11 @@ pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
             },
             .{
                 .position = .{ .offset = .{ .advance = .{ .rank = 2, .file = 0 } } },
-                .requirement = .{ .take = .never, .home_rank = 1 },
+                .requirement = .{
+                    .take = .never,
+                    .home_rank = 1,
+                    .free = .{ .advance = .{ .rank = 1, .file = 0 } },
+                },
             },
             .{
                 .position = .{ .offset = .{ .advance = .{ .rank = 1, .file = -1 } } },
@@ -141,13 +145,13 @@ pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
             },
             .{
                 .position = .{ .offset = .{ .advance = .{ .rank = 1, .file = -1 } } },
-                .requirement = .{ .take = .always },
                 .take_alt = .{ .real = .{ .rank = 0, .file = -1 } },
+                .requirement = .{ .take = .always },
             },
             .{
                 .position = .{ .offset = .{ .advance = .{ .rank = 1, .file = 1 } } },
-                .requirement = .{ .take = .always },
                 .take_alt = .{ .real = .{ .rank = 0, .file = 1 } },
+                .requirement = .{ .take = .always },
             },
         },
         .knight => &[_]MoveRule{
@@ -204,6 +208,9 @@ const Requirement = struct {
     /// Rank index, counting from home side (black:7 = white:0 and vice-versa).
     /// For a pawn's first move.
     home_rank: ?usize = null,
+    /// Requires this tile to be free. Treats out-of-bounds tiles as free.
+    /// Similar to `MoveRule.position.line`.
+    free: ?Offset = null,
 
     // ...also possible to add a fn pointer field for any custom behavior
     // (eg. castling).
@@ -217,7 +224,8 @@ const Requirement = struct {
         }
 
         return self.isTakeSatisfied(context) and
-            self.isHomeRankSatisfied(context);
+            self.isHomeRankSatisfied(context) and
+            self.isFreeSatisfied(context);
     }
 
     fn isTakeSatisfied(self: *const Self, context: Context) bool {
@@ -226,7 +234,6 @@ const Requirement = struct {
         };
 
         const will_take = context.willTake();
-
         return switch (take) {
             .always => will_take == .take,
             .never => will_take == .no_take,
@@ -244,6 +251,17 @@ const Requirement = struct {
             Board.SIZE - context.origin.rank - 1;
 
         return home_rank == actual_home_rank;
+    }
+
+    fn isFreeSatisfied(self: *const Self, context: Context) bool {
+        const free = self.free orelse {
+            return true;
+        };
+
+        const tile = free.applyTo(context.origin, context.piece) orelse {
+            return true;
+        };
+        return context.board.get(tile) == null;
     }
 
     pub const Context = struct {
