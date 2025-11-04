@@ -16,62 +16,70 @@ pub const AvailableMoves = struct {
     board: *const Board,
     origin: Tile,
     index: usize,
-    line_index: ?usize,
+    line_index: usize,
 
     pub fn new(board: *const Board, origin: Tile) Self {
         return Self{
             .board = board,
             .origin = origin,
             .index = 0,
-            .line_index = null,
+            .line_index = 0,
         };
     }
 
     pub fn next(self: *AvailableMoves) ?Move {
         const piece = self.board.get(self.origin) orelse
             return null;
-
         const rules = getMoveRules(piece.kind);
 
         while (self.index < rules.len) {
             const rule = rules[self.index];
-
-            switch (rule.position) {
-                .offset => |offset| {
-                    self.index += 1;
-                    if (self.calculateMove(
-                        rule,
-                        piece,
-                        offset.applyTo(self.origin, piece),
-                    )) |move| {
-                        return move;
-                    }
-                },
-
-                .line => |line| {
-                    const line_index = self.line_index orelse 0;
-                    self.line_index = line_index + 1;
-                    assert(line_index <= Board.SIZE * Board.SIZE);
-
-                    if (self.calculateMove(
-                        rule,
-                        piece,
-                        line.scale(line_index + 1).applyTo(self.origin),
-                    )) |move| {
-                        if (self.board.get(move.destination) != null) {
-                            self.index += 1;
-                            self.line_index = null;
-                        }
-                        return move;
-                    } else {
-                        self.index += 1;
-                        self.line_index = null;
-                    }
-                },
+            if (self.tryApplyRule(rule, piece)) |move| {
+                return move;
             }
         }
-
         return null;
+    }
+
+    fn tryApplyRule(self: *Self, rule: MoveRule, piece: Piece) ?Move {
+        switch (rule.position) {
+            .offset => |offset| {
+                self.updateIndex();
+
+                const move = self.calculateMove(
+                    rule,
+                    piece,
+                    offset.applyTo(self.origin, piece),
+                ) orelse {
+                    return null;
+                };
+                return move;
+            },
+
+            .line => |line| {
+                assert(self.line_index <= Board.SIZE * Board.SIZE);
+                self.line_index += 1;
+
+                const move = self.calculateMove(
+                    rule,
+                    piece,
+                    line.scale(self.line_index).applyTo(self.origin),
+                ) orelse {
+                    self.updateIndex();
+                    return null;
+                };
+
+                if (self.board.get(move.destination) != null) {
+                    self.updateIndex();
+                }
+                return move;
+            },
+        }
+    }
+
+    fn updateIndex(self: *Self) void {
+        self.index += 1;
+        self.line_index = 0;
     }
 
     fn calculateMove(
