@@ -119,48 +119,52 @@ pub const Piece = struct {
     }
 };
 
-pub fn getAvailableMoves(board: *const Self, tile: Tile) AvailableMoves {
+pub fn getAvailableMoves(board: *const Self, origin: Tile) AvailableMoves {
     return AvailableMoves{
         .board = board,
-        .tile = tile,
+        .origin = origin,
         .index = 0,
     };
 }
+
+pub const Move = struct {
+    destination: Tile,
+    // ...add more fields when necessary
+};
 
 pub const AvailableMoves = struct {
     const Board = Self;
 
     board: *const Board,
-    tile: Tile,
+    origin: Tile,
     index: usize,
 
-    pub fn next(self: *AvailableMoves) ?Tile {
-        const piece = self.board.get(self.tile) orelse
+    pub fn next(self: *AvailableMoves) ?Move {
+        const piece = self.board.get(self.origin) orelse
             return null;
 
-        const moves = getMoves(piece.kind);
+        const moves = getMoveRules(piece.kind);
 
         while (self.index < moves.len) {
             const move = moves[self.index];
             self.index += 1;
 
-            const destination = move.offset.applyTo(self.tile, piece) orelse {
+            const destination = move.offset.applyTo(self.origin, piece) orelse {
                 continue;
             };
 
             const context = Requirement.Context{
                 .board = self.board,
                 .piece = piece,
-                .tile = self.tile,
-                .move = move,
+                .origin = self.origin,
                 .destination = destination,
+                .rule = move,
             };
 
             if (move.requirement.isSatisfied(context)) {
-                // TODO: Return some result type which includes `tile_future`
-                // and whether any piece was taken (if different).
-                // Possibly derived from `move`
-                return destination;
+                return Move{
+                    .destination = destination,
+                };
             }
         }
 
@@ -168,10 +172,19 @@ pub const AvailableMoves = struct {
     }
 };
 
-fn getMoves(piece: Piece.Kind) []const Move {
+// TODO: Move all below to other file
+
+const MoveRule = struct {
+    offset: Offset,
+    requirement: Requirement,
+    /// If piece to take is different to destination (eg. in en-passant).
+    take_alt: ?Offset = null,
+};
+
+fn getMoveRules(piece: Piece.Kind) []const MoveRule {
     // TODO: Support all pieces obviously
     return switch (piece) {
-        .pawn => &[_]Move{
+        .pawn => &[_]MoveRule{
             .{
                 .offset = .{ .advance = .{ .rank = 1, .file = 0 } },
                 .requirement = .{ .take = .never },
@@ -191,22 +204,99 @@ fn getMoves(piece: Piece.Kind) []const Move {
             .{
                 .offset = .{ .advance = .{ .rank = 1, .file = -1 } },
                 .requirement = .{ .take = .always },
-                .take = .{ .real = .{ .rank = 0, .file = -1 } },
+                .take_alt = .{ .real = .{ .rank = 0, .file = -1 } },
             },
             .{
                 .offset = .{ .advance = .{ .rank = 1, .file = 1 } },
                 .requirement = .{ .take = .always },
-                .take = .{ .real = .{ .rank = 0, .file = 1 } },
+                .take_alt = .{ .real = .{ .rank = 0, .file = 1 } },
             },
         },
-        else => &[_]Move{},
+        else => &[_]MoveRule{},
     };
 }
 
-const Move = struct {
-    offset: Offset,
-    requirement: Requirement,
-    take: ?Offset = null,
+/// Use `null` for any unrestricted fields.
+const Requirement = struct {
+    const Board = Self;
+
+    /// Whether a piece must take (`always`), must **not** take (`never`).
+    take: ?enum { always, never } = null,
+    /// Rank index, counting from home side (black:7 = white:0 and vice-versa).
+    /// For a pawn's first move.
+    home_rank: ?usize = null,
+
+    // ...also possible to add a fn pointer field for any custom behavior
+    // (eg. castling).
+
+    pub fn isSatisfied(self: *const Requirement, context: Context) bool {
+        // Can never take/overwrite own piece
+        if (context.board.get(context.destination)) |piece_take| {
+            if (piece_take.player == context.piece.player) {
+                return false;
+            }
+        }
+
+        return self.isTakeSatisfied(context) and
+            self.isHomeRankSatisfied(context);
+    }
+
+    fn isTakeSatisfied(self: *const Requirement, context: Context) bool {
+        const take = self.take orelse {
+            return true;
+        };
+
+        const will_take = context.willTake();
+
+        return switch (take) {
+            .always => will_take == .take,
+            .never => will_take == .no_take,
+        };
+    }
+
+    fn isHomeRankSatisfied(self: *const Requirement, context: Context) bool {
+        const home_rank = self.home_rank orelse {
+            return true;
+        };
+
+        const actual_home_rank = if (context.piece.player == .white)
+            context.origin.rank
+        else
+            Board.SIZE - context.origin.rank - 1;
+
+        return home_rank == actual_home_rank;
+    }
+
+    const Context = struct {
+        board: *const Board,
+        piece: Piece,
+        origin: Tile,
+        destination: Tile,
+        rule: MoveRule,
+
+        pub fn willTake(self: *const Context) enum { invalid, take, no_take } {
+            const tile_take = self.getTakeTile() orelse {
+                return .invalid;
+            };
+            const piece_take = self.board.get(tile_take) orelse {
+                return .no_take;
+            };
+            if (piece_take.player == self.piece.player) {
+                return .invalid;
+            }
+            return .take;
+        }
+
+        /// Assumes `self.destination` is an opposite piece, if
+        /// `self.rule.take_alt` is `null`.
+        // TODO: Change somehow to prevent the weird above assumption
+        pub fn getTakeTile(self: *const Context) ?Tile {
+            if (self.rule.take_alt) |take| {
+                return take.applyTo(self.origin, self.piece);
+            }
+            return self.destination;
+        }
+    };
 };
 
 /// An offset which is dependant on the piece's attributes (eg. color).
@@ -251,80 +341,4 @@ const RealOffset = struct {
             .file = @intCast(file),
         };
     }
-};
-
-/// Use `null` for any unrestricted fields.
-const Requirement = struct {
-    const Board = Self;
-
-    /// Whether a piece must take (`always`), must **not** take (`never`).
-    take: ?enum { always, never } = null,
-    /// Rank index, counting from home side (black:7 = white:0 and vice-versa).
-    /// For a pawn's first move.
-    home_rank: ?usize = null,
-
-    // TODO: Add custom field for special behaviour (eg. castling). IF NECESSARY
-
-    pub fn isSatisfied(
-        self: *const Requirement,
-        context: Context,
-    ) bool {
-        // Can never take/overwrite own piece
-        if (context.board.get(context.destination)) |piece_take| {
-            if (piece_take.player == context.piece.player) {
-                return false;
-            }
-        }
-
-        if (self.take) |take| {
-            const will_take = context.willTake();
-            const satisfied = switch (take) {
-                .always => will_take == .take,
-                .never => will_take == .no_take,
-            };
-            if (!satisfied) {
-                return false;
-            }
-        }
-
-        if (self.home_rank) |home_rank| {
-            const actual_home_rank = if (context.piece.player == .white)
-                context.tile.rank
-            else
-                Board.SIZE - context.tile.rank - 1;
-            if (home_rank != actual_home_rank) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    const Context = struct {
-        board: *const Board,
-        piece: Piece,
-        tile: Tile,
-        move: Move,
-        destination: Tile,
-
-        fn willTake(self: *const Context) enum { invalid, take, no_take } {
-            const tile_take = self.getTakeTile() orelse {
-                return .invalid;
-            };
-            const piece_take = self.board.get(tile_take) orelse {
-                return .no_take;
-            };
-            if (piece_take.player == self.piece.player) {
-                return .invalid;
-            }
-            return .take;
-        }
-
-        fn getTakeTile(self: *const Context) ?Tile {
-            if (self.move.take) |take| {
-                return take.applyTo(self.tile, self.piece);
-            }
-            return self.destination;
-        }
-    };
 };

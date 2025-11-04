@@ -114,7 +114,7 @@ pub fn render(self: *Self, state: *const State) void {
     if (state.selected) |selected| {
         var available_moves = state.board.getAvailableMoves(selected);
         while (available_moves.next()) |available| {
-            self.renderRectHighlight(getTileRect(available), .{
+            self.renderRectHighlight(getTileRect(available.destination), .{
                 .fg = .green,
             });
         }
