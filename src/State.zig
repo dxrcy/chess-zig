@@ -1,10 +1,13 @@
 const Self = @This();
 
 const std = @import("std");
+const assert = std.debug.assert;
 
 pub const Board = @import("Board.zig");
 pub const Tile = Board.Tile;
 pub const Piece = Board.Piece;
+
+const moves = @import("moves.zig");
 
 board: Board,
 turn: Player,
@@ -77,8 +80,26 @@ pub fn toggleSelection(self: *Self) void {
         return;
     }
 
-    self.board.set(selected, self.board.get(self.focus));
+    const move = self.getAvailableMove(selected, self.focus) orelse
+        return;
+    assert(move.destination.eql(self.focus));
+
+    if (move.take) |take| {
+        self.board.set(take, null);
+    }
+
     self.board.set(self.focus, piece);
+    self.board.set(selected, null);
 
     self.turn = if (self.turn == .white) .black else .white;
+}
+
+fn getAvailableMove(self: *const Self, origin: Tile, destination: Tile) ?moves.Move {
+    var available_moves = self.board.getAvailableMoves(origin);
+    while (available_moves.next()) |available| {
+        if (available.destination.eql(destination)) {
+            return available;
+        }
+    }
+    return null;
 }

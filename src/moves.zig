@@ -7,6 +7,7 @@ const Piece = Board.Piece;
 
 pub const Move = struct {
     destination: Tile,
+    take: ?Tile,
     // ...add more fields when necessary
 };
 
@@ -106,6 +107,7 @@ pub const AvailableMoves = struct {
 
         return Move{
             .destination = destination,
+            .take = context.getTakeTile(),
         };
     }
 };
