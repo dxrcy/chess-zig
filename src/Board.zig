@@ -67,6 +67,19 @@ pub fn addTaken(self: *Self, piece: Piece) void {
     self.taken[piece.toInt()] += 1;
 }
 
+pub fn isPieceAlive(self: *const Self, target: Piece) bool {
+    for (0..SIZE) |rank| {
+        for (0..SIZE) |file| {
+            const piece = self.get(.{ .rank = rank, .file = file }) orelse
+                continue;
+            if (piece.eql(target)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 pub const Tile = struct {
     rank: usize,
     file: usize,
@@ -120,6 +133,10 @@ pub const Piece = struct {
             \\[+])_(/_\
             ,
         };
+    }
+
+    pub fn eql(lhs: Piece, rhs: Piece) bool {
+        return lhs.kind == rhs.kind and lhs.player == rhs.player;
     }
 
     pub fn fromInt(value: u8) Piece {

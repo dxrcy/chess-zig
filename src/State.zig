@@ -32,16 +32,22 @@ pub const Player = enum(u1) {
 };
 
 pub fn new() Self {
-    return Self{
-        .status = .play,
-        .board = Board.new(),
-        .turn = .white,
-        .focus = .{ .rank = 3, .file = 3 },
-        .selected = null,
-    };
+    var self: Self = undefined;
+    self.resetGame();
+    return self;
+}
+
+pub fn resetGame(self: *Self) void {
+    self.status = .play;
+    self.board = Board.new();
+    self.turn = .white;
+    self.focus = .{ .rank = 3, .file = 3 };
+    self.selected = null;
 }
 
 pub fn moveFocus(self: *Self, direction: enum { left, right, up, down }) void {
+    assert(self.status == .play);
+
     switch (direction) {
         .left => if (self.focus.file == 0) {
             self.focus.file = Board.SIZE - 1;
@@ -68,6 +74,8 @@ pub fn moveFocus(self: *Self, direction: enum { left, right, up, down }) void {
 
 // TODO: Rename
 pub fn toggleSelection(self: *Self, allow_invalid: bool) void {
+    assert(self.status == .play);
+
     const selected = self.selected orelse {
         const piece = self.board.get(self.focus);
         if (piece != null and
@@ -111,6 +119,19 @@ pub fn toggleSelection(self: *Self, allow_invalid: bool) void {
 
     self.turn = self.turn.flip();
     self.selected = null;
+
+    self.updateStatus();
+}
+
+fn updateStatus(self: *Self) void {
+    const alive_white = self.board.isPieceAlive(.{ .kind = .king, .player = .white });
+    const alive_black = self.board.isPieceAlive(.{ .kind = .king, .player = .black });
+    assert(alive_white or alive_black);
+    if (!alive_white) {
+        self.status = .game_over;
+    } else if (!alive_black) {
+        self.status = .game_over;
+    }
 }
 
 fn getAvailableMove(self: *const Self, origin: Tile, destination: Tile) ?moves.Move {

@@ -41,21 +41,29 @@ pub fn main() !void {
         switch (buffer[0]) {
             0x03 => break,
 
-            'h' => state.moveFocus(.left),
-            'l' => state.moveFocus(.right),
-            'k' => state.moveFocus(.up),
-            'j' => state.moveFocus(.down),
+            'h' => if (state.status == .play) state.moveFocus(.left),
+            'l' => if (state.status == .play) state.moveFocus(.right),
+            'k' => if (state.status == .play) state.moveFocus(.up),
+            'j' => if (state.status == .play) state.moveFocus(.down),
 
-            0x20 => state.toggleSelection(false),
-            0x1b => state.selected = null,
+            0x20 => if (state.status == .play) {
+                state.toggleSelection(false);
+            },
+            0x1b => if (state.status == .play) {
+                state.selected = null;
+            },
 
-            't' => {
+            'r' => if (state.status == .game_over) {
+                state.resetGame();
+            },
+
+            't' => if (state.status == .play) {
                 state.turn = state.turn.flip();
                 state.selected = null;
             },
-            'y' => state.toggleSelection(true),
-
-            'p' => state.status = if (state.status == .play) .game_over else .play,
+            'y' => if (state.status == .play) {
+                state.toggleSelection(true);
+            },
 
             else => {},
         }
