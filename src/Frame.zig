@@ -27,6 +27,7 @@ pub fn new() Self {
     };
 }
 
+// TODO: Use container for y,x
 pub fn set(self: *Self, y: usize, x: usize, options: Cell.Options) void {
     assert(x < WIDTH and y < HEIGHT);
     self.cells[y * WIDTH + x].apply(options);

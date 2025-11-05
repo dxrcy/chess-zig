@@ -55,6 +55,8 @@ pub fn main() !void {
             },
             'y' => state.toggleSelection(true),
 
+            'p' => state.status = if (state.status == .play) .game_over else .play,
+
             else => {},
         }
     }

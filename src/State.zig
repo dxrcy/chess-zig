@@ -9,10 +9,16 @@ pub const Piece = Board.Piece;
 
 const moves = @import("moves.zig");
 
+status: Status,
 board: Board,
 turn: Player,
 focus: Tile,
 selected: ?Tile,
+
+const Status = enum {
+    play,
+    game_over,
+};
 
 pub const Player = enum(u1) {
     white = 0,
@@ -27,6 +33,7 @@ pub const Player = enum(u1) {
 
 pub fn new() Self {
     return Self{
+        .status = .play,
         .board = Board.new(),
         .turn = .white,
         .focus = .{ .rank = 3, .file = 3 },

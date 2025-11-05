@@ -151,6 +151,14 @@ pub fn render(self: *Self, state: *const State) void {
         }
     }
 
+    if (state.status == .game_over) {
+        self.renderLargeText(&[_][]const u8{
+            "game",
+            "over",
+        }, 14, 20);
+        return;
+    }
+
     // Selected, available moves
     if (state.selected) |selected| {
         var available_moves = state.board.getAvailableMoves(selected);
@@ -197,6 +205,257 @@ pub fn render(self: *Self, state: *const State) void {
         .fg = if (state.turn == .white) .cyan else .red,
         .bold = true,
     });
+
+    // self.renderLargeText(&[_][]const u8{
+    //     "abcdefgh",
+    //     "ijklmnop",
+    //     "qrstuvwx",
+    //     "yz.,?!()",
+    // }, 7, 5);
+}
+
+const WIDTH = 7;
+const HEIGHT = 5;
+const GAP_X = 1;
+const GAP_Y = 1;
+
+fn renderLargeText(
+    self: *Self,
+    texts: []const []const u8,
+    origin_y: usize,
+    origin_x: usize,
+) void {
+    for (texts, 0..) |text, row| {
+        self.renderLargeTextLine(text, origin_y + row * (HEIGHT + GAP_Y), origin_x);
+    }
+}
+
+fn renderLargeTextLine(
+    self: *Self,
+    text: []const u8,
+    origin_y: usize,
+    origin_x: usize,
+) void {
+    var frame = self.getForeFrame();
+
+    for (text, 0..) |letter, i| {
+        const string: *const [HEIGHT * WIDTH + (HEIGHT - 1)]u8 =
+            switch (letter) {
+                'a' =>
+                \\,#####,
+                \\##...##
+                \\#######
+                \\##...##
+                \\##...##
+                ,
+                'b' =>
+                \\######,
+                \\##...##
+                \\######,
+                \\##...##
+                \\######'
+                ,
+                'c' =>
+                \\,#####,
+                \\##...''
+                \\##.....
+                \\##...,,
+                \\'#####'
+                ,
+                'd' =>
+                \\######,
+                \\##...##
+                \\##...##
+                \\##...##
+                \\######'
+                ,
+                'e' =>
+                \\#######
+                \\##.....
+                \\#####..
+                \\##.....
+                \\#######
+                ,
+                'f' =>
+                \\#######
+                \\##.....
+                \\#####..
+                \\##.....
+                \\##.....
+                ,
+                'g' =>
+                \\,#####,
+                \\##...''
+                \\##..,,,
+                \\##..'##
+                \\'#####'
+                ,
+                'h' =>
+                \\##...##
+                \\##...##
+                \\#######
+                \\##...##
+                \\##...##
+                ,
+                'i' =>
+                \\]#####[
+                \\..]#[..
+                \\..]#[..
+                \\..]#[..
+                \\]#####[
+                ,
+                'j' =>
+                \\#######
+                \\.....##
+                \\.....##
+                \\##...##
+                \\'#####'
+                ,
+                'k' =>
+                \\##...##
+                \\##.,##'
+                \\#####,.
+                \\##..'##
+                \\##...##
+                ,
+                'l' =>
+                \\##.....
+                \\##.....
+                \\##.....
+                \\##.....
+                \\#######
+                ,
+                'm' =>
+                \\##,.,##
+                \\#######
+                \\##.'.##
+                \\##...##
+                \\##...##
+                ,
+                'n' =>
+                \\##,..##
+                \\####,##
+                \\##.'###
+                \\##...##
+                \\##...##
+                ,
+                'o' =>
+                \\,#####,
+                \\##...##
+                \\##...##
+                \\##...##
+                \\'#####'
+                ,
+                'p' =>
+                \\######,
+                \\##...##
+                \\######'
+                \\##.....
+                \\##.....
+                ,
+                'q' =>
+                \\,#####,
+                \\##...##
+                \\##...##
+                \\'#####'
+                \\....'##
+                ,
+                'r' =>
+                \\######,
+                \\##...##
+                \\######.
+                \\##..'##
+                \\##...##
+                ,
+                's' =>
+                \\,#####,
+                \\##...''
+                \\'#####,
+                \\,,...##
+                \\'#####'
+                ,
+                't' =>
+                \\#######
+                \\..]#[..
+                \\..]#[..
+                \\..]#[..
+                \\..]#[..
+                ,
+                'u' =>
+                \\##...##
+                \\##...##
+                \\##...##
+                \\##...##
+                \\'#####'
+                ,
+                'v' =>
+                \\##...##
+                \\##...##
+                \\##,.,##
+                \\.##,##.
+                \\..###..
+                ,
+                'w' =>
+                \\##...##
+                \\##...##
+                \\##.,.##
+                \\#######
+                \\##'.'##
+                ,
+                'x' =>
+                \\##,.,##
+                \\.'#,#'.
+                \\.,###,.
+                \\,#'.'#,
+                \\##...##
+                ,
+                'y' =>
+                \\##...##
+                \\##,.,##
+                \\.'###'.
+                \\..]#[..
+                \\..]#[..
+                ,
+                'z' =>
+                \\#######
+                \\....,##
+                \\..,##'.
+                \\,##'...
+                \\#######
+                ,
+                else =>
+                \\#.#.#.#
+                \\.#.#.#.
+                \\#.#.#.#
+                \\.#.#.#.
+                \\#.#.#.#
+                ,
+            };
+
+        for (0..HEIGHT) |y| {
+            for (0..WIDTH) |x| {
+                const char_template = string[y * (WIDTH + 1) + x];
+                const char: u21 = switch (char_template) {
+                    '#' => '█',
+                    ',' => '▄',
+                    '\'' => '▀',
+                    ']' => '▐',
+                    '[' => '▌',
+                    '.' => ' ',
+                    else => unreachable,
+                };
+
+                frame.set(
+                    origin_y + y,
+                    origin_x + i * (WIDTH + GAP_X) + x,
+                    .{
+                        .char = char,
+                        .fg = .white,
+                    },
+                );
+            }
+        }
+    }
 }
 
 fn renderDecimalInt(
@@ -229,7 +488,7 @@ fn renderPiece(self: *Self, piece: Piece, tile: Tile, options: Cell.Options) voi
                 tile.rank * tile_size.HEIGHT + y + tile_size.PADDING_TOP,
                 tile.file * tile_size.WIDTH + x + tile_size.PADDING_LEFT,
                 (Cell.Options{
-                    .char = string[y * Piece.HEIGHT + x],
+                    .char = string[y * Piece.WIDTH + x],
                     .fg = if (piece.player == .white) .cyan else .red,
                     .bold = true,
                 }).join(options),
