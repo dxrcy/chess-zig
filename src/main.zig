@@ -46,10 +46,11 @@ pub fn main() !void {
             'k' => state.moveFocus(.up),
             'j' => state.moveFocus(.down),
 
-            0x20 => state.toggleSelection(),
+            0x20 => state.toggleSelection(false),
             0x1b => state.selected = null,
 
             't' => state.turn = if (state.turn == .white) .black else .white,
+            'y' => state.toggleSelection(true),
 
             else => {},
         }

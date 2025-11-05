@@ -53,7 +53,8 @@ pub fn moveFocus(self: *Self, direction: enum { left, right, up, down }) void {
     }
 }
 
-pub fn toggleSelection(self: *Self) void {
+// TODO: Rename
+pub fn toggleSelection(self: *Self, allow_invalid: bool) void {
     const selected = self.selected orelse {
         const piece = self.board.get(self.focus);
         if (piece != null and
@@ -78,6 +79,11 @@ pub fn toggleSelection(self: *Self) void {
         piece.?.player != self.turn)
     {
         return;
+    }
+
+    if (allow_invalid) {
+        self.board.set(self.focus, piece);
+        self.board.set(selected, null);
     }
 
     const move = self.getAvailableMove(selected, self.focus) orelse
