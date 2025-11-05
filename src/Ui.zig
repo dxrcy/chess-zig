@@ -153,60 +153,65 @@ pub fn render(self: *Self, state: *const State) void {
         }
     }
 
-    if (state.status == .win) {
-        self.renderLargeText(&[_][]const u8{
-            "game",
-            "over",
-        }, 14, 20);
-        return;
-    }
+    switch (state.status) {
+        .win => |player| {
+            self.renderLargeText(&[_][]const u8{
+                "game",
+                "over",
+            }, 14, 20);
+            // TODO:
+            _ = player;
+        },
 
-    // Selected, available moves
-    if (state.selected) |selected| {
-        var available_moves = state.board.getAvailableMoves(selected);
-        var has_available = false;
-        while (available_moves.next()) |available| {
-            has_available = true;
+        .play => |player| {
+            // Selected, available moves
+            if (state.selected) |selected| {
+                var available_moves = state.board.getAvailableMoves(selected);
+                var has_available = false;
+                while (available_moves.next()) |available| {
+                    has_available = true;
 
-            if (state.board.get(available.destination)) |piece| {
-                // Take direct
-                self.renderPiece(piece, available.destination, .{
-                    .fg = .bright_white,
+                    if (state.board.get(available.destination)) |piece| {
+                        // Take direct
+                        self.renderPiece(piece, available.destination, .{
+                            .fg = .bright_white,
+                        });
+                    } else {
+                        // No take or take indirect
+                        const piece = state.board.get(selected) orelse
+                            continue;
+
+                        self.renderPiece(piece, available.destination, .{
+                            .fg = if (available.destination.isEven()) .bright_black else .black,
+                        });
+
+                        // Take indirect
+                        if (available.take) |take| {
+                            self.renderPiece(piece, take, .{
+                                .fg = .white,
+                            });
+                        }
+                    }
+                }
+
+                self.renderRectSolid(getTileRect(selected), .{
+                    .bg = if (player == .white) .cyan else .red,
                 });
-            } else {
-                // No take or take indirect
-                const piece = state.board.get(selected) orelse
-                    continue;
 
-                self.renderPiece(piece, available.destination, .{
-                    .fg = if (available.destination.isEven()) .bright_black else .black,
-                });
-
-                // Take indirect
-                if (available.take) |take| {
-                    self.renderPiece(piece, take, .{
-                        .fg = .white,
+                if (state.board.get(selected)) |piece| {
+                    self.renderPiece(piece, selected, .{
+                        .fg = if (has_available) .black else .white,
                     });
                 }
             }
-        }
 
-        self.renderRectSolid(getTileRect(selected), .{
-            .bg = if (state.turn == .white) .cyan else .red,
-        });
-
-        if (state.board.get(selected)) |piece| {
-            self.renderPiece(piece, selected, .{
-                .fg = if (has_available) .black else .white,
+            // Focus
+            self.renderRectHighlight(getTileRect(state.focus), .{
+                .fg = if (player == .white) .cyan else .red,
+                .bold = true,
             });
-        }
+        },
     }
-
-    // Focus
-    self.renderRectHighlight(getTileRect(state.focus), .{
-        .fg = if (state.turn == .white) .cyan else .red,
-        .bold = true,
-    });
 
     // self.renderLargeText(&[_][]const u8{
     //     "abcdefgh",

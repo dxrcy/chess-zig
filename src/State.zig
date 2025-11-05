@@ -11,13 +11,11 @@ const moves = @import("moves.zig");
 
 status: Status,
 board: Board,
-turn: Player,
 focus: Tile,
 selected: ?Tile,
 
 const Status = union(enum) {
-    // TODO: Move `State.turn` here
-    play: void,
+    play: Player,
     win: Player,
 };
 
@@ -39,9 +37,8 @@ pub fn new() Self {
 }
 
 pub fn resetGame(self: *Self) void {
-    self.status = .play;
+    self.status = .{ .play = .white };
     self.board = Board.new();
-    self.turn = .white;
     self.focus = .{ .rank = 3, .file = 3 };
     self.selected = null;
 }
@@ -75,12 +72,15 @@ pub fn moveFocus(self: *Self, direction: enum { left, right, up, down }) void {
 
 // TODO: Rename
 pub fn toggleSelection(self: *Self, allow_invalid: bool) void {
-    assert(self.status == .play);
+    const player = switch (self.status) {
+        .play => |player| player,
+        else => unreachable,
+    };
 
     const selected = self.selected orelse {
         const piece = self.board.get(self.focus);
         if (piece != null and
-            piece.?.player == self.turn)
+            piece.?.player == player)
         {
             self.selected = self.focus;
         }
@@ -93,7 +93,7 @@ pub fn toggleSelection(self: *Self, allow_invalid: bool) void {
     }
 
     const piece = self.board.get(selected);
-    assert(piece.?.player == self.turn);
+    assert(piece.?.player == player);
 
     if (allow_invalid) {
         if (self.board.get(self.focus)) |piece_taken| {
@@ -101,8 +101,11 @@ pub fn toggleSelection(self: *Self, allow_invalid: bool) void {
         }
         self.board.set(self.focus, piece);
         self.board.set(selected, null);
-        self.turn = self.turn.flip();
         self.selected = null;
+        if (!self.updateStatus()) {
+            self.status = .{ .play = player.flip() };
+        }
+        return;
     }
 
     const move = self.getAvailableMove(selected, self.focus) orelse
@@ -117,23 +120,28 @@ pub fn toggleSelection(self: *Self, allow_invalid: bool) void {
 
     self.board.set(self.focus, piece);
     self.board.set(selected, null);
-
-    self.turn = self.turn.flip();
     self.selected = null;
 
-    self.updateStatus();
+    if (!self.updateStatus()) {
+        self.status = .{ .play = player.flip() };
+    }
 }
 
-fn updateStatus(self: *Self) void {
+fn updateStatus(self: *Self) bool {
     const alive_white = self.board.isPieceAlive(.{ .kind = .king, .player = .white });
     const alive_black = self.board.isPieceAlive(.{ .kind = .king, .player = .black });
 
     assert(alive_white or alive_black);
     if (!alive_white) {
         self.status = .{ .win = .black };
-    } else if (!alive_black) {
-        self.status = .{ .win = .white };
+        return true;
     }
+    if (!alive_black) {
+        self.status = .{ .win = .white };
+        return true;
+    }
+
+    return false;
 }
 
 fn getAvailableMove(self: *const Self, origin: Tile, destination: Tile) ?moves.Move {

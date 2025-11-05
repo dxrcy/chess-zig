@@ -57,9 +57,12 @@ pub fn main() !void {
                 state.resetGame();
             },
 
-            't' => if (state.status == .play) {
-                state.turn = state.turn.flip();
-                state.selected = null;
+            't' => switch (state.status) {
+                .play => |*player| {
+                    player.* = player.flip();
+                    state.selected = null;
+                },
+                else => unreachable,
             },
             'y' => if (state.status == .play) {
                 state.toggleSelection(true);
