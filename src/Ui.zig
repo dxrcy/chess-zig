@@ -16,6 +16,8 @@ const Color = Terminal.Attributes.Color;
 const Frame = @import("Frame.zig");
 const Cell = Frame.Cell;
 
+const text = @import("text.zig");
+
 terminal: Terminal,
 frames: [2]Frame,
 current_frame: u1,
@@ -214,248 +216,40 @@ pub fn render(self: *Self, state: *const State) void {
     // }, 7, 5);
 }
 
-const WIDTH = 7;
-const HEIGHT = 5;
-const GAP_X = 1;
-const GAP_Y = 1;
-
 fn renderLargeText(
     self: *Self,
-    texts: []const []const u8,
+    lines: []const []const u8,
     origin_y: usize,
     origin_x: usize,
 ) void {
-    for (texts, 0..) |text, row| {
-        self.renderLargeTextLine(text, origin_y + row * (HEIGHT + GAP_Y), origin_x);
+    for (lines, 0..) |string, row| {
+        self.renderLargeTextLine(
+            string,
+            origin_y + row * (text.HEIGHT + text.GAP_Y),
+            origin_x,
+        );
     }
 }
 
 fn renderLargeTextLine(
     self: *Self,
-    text: []const u8,
+    string: []const u8,
     origin_y: usize,
     origin_x: usize,
 ) void {
     var frame = self.getForeFrame();
 
-    for (text, 0..) |letter, i| {
-        const string: *const [HEIGHT * WIDTH + (HEIGHT - 1)]u8 =
-            switch (letter) {
-                'a' =>
-                \\,#####,
-                \\##...##
-                \\#######
-                \\##...##
-                \\##...##
-                ,
-                'b' =>
-                \\######,
-                \\##...##
-                \\######,
-                \\##...##
-                \\######'
-                ,
-                'c' =>
-                \\,#####,
-                \\##...''
-                \\##.....
-                \\##...,,
-                \\'#####'
-                ,
-                'd' =>
-                \\######,
-                \\##...##
-                \\##...##
-                \\##...##
-                \\######'
-                ,
-                'e' =>
-                \\#######
-                \\##.....
-                \\#####..
-                \\##.....
-                \\#######
-                ,
-                'f' =>
-                \\#######
-                \\##.....
-                \\#####..
-                \\##.....
-                \\##.....
-                ,
-                'g' =>
-                \\,#####,
-                \\##...''
-                \\##..,,,
-                \\##..'##
-                \\'#####'
-                ,
-                'h' =>
-                \\##...##
-                \\##...##
-                \\#######
-                \\##...##
-                \\##...##
-                ,
-                'i' =>
-                \\]#####[
-                \\..]#[..
-                \\..]#[..
-                \\..]#[..
-                \\]#####[
-                ,
-                'j' =>
-                \\#######
-                \\.....##
-                \\.....##
-                \\##...##
-                \\'#####'
-                ,
-                'k' =>
-                \\##...##
-                \\##.,##'
-                \\#####,.
-                \\##..'##
-                \\##...##
-                ,
-                'l' =>
-                \\##.....
-                \\##.....
-                \\##.....
-                \\##.....
-                \\#######
-                ,
-                'm' =>
-                \\##,.,##
-                \\#######
-                \\##.'.##
-                \\##...##
-                \\##...##
-                ,
-                'n' =>
-                \\##,..##
-                \\####,##
-                \\##.'###
-                \\##...##
-                \\##...##
-                ,
-                'o' =>
-                \\,#####,
-                \\##...##
-                \\##...##
-                \\##...##
-                \\'#####'
-                ,
-                'p' =>
-                \\######,
-                \\##...##
-                \\######'
-                \\##.....
-                \\##.....
-                ,
-                'q' =>
-                \\,#####,
-                \\##...##
-                \\##...##
-                \\'#####'
-                \\....'##
-                ,
-                'r' =>
-                \\######,
-                \\##...##
-                \\######.
-                \\##..'##
-                \\##...##
-                ,
-                's' =>
-                \\,#####,
-                \\##...''
-                \\'#####,
-                \\,,...##
-                \\'#####'
-                ,
-                't' =>
-                \\#######
-                \\..]#[..
-                \\..]#[..
-                \\..]#[..
-                \\..]#[..
-                ,
-                'u' =>
-                \\##...##
-                \\##...##
-                \\##...##
-                \\##...##
-                \\'#####'
-                ,
-                'v' =>
-                \\##...##
-                \\##...##
-                \\##,.,##
-                \\.##,##.
-                \\..###..
-                ,
-                'w' =>
-                \\##...##
-                \\##...##
-                \\##.,.##
-                \\#######
-                \\##'.'##
-                ,
-                'x' =>
-                \\##,.,##
-                \\.'#,#'.
-                \\.,###,.
-                \\,#'.'#,
-                \\##...##
-                ,
-                'y' =>
-                \\##...##
-                \\##,.,##
-                \\.'###'.
-                \\..]#[..
-                \\..]#[..
-                ,
-                'z' =>
-                \\#######
-                \\....,##
-                \\..,##'.
-                \\,##'...
-                \\#######
-                ,
-                else =>
-                \\#.#.#.#
-                \\.#.#.#.
-                \\#.#.#.#
-                \\.#.#.#.
-                \\#.#.#.#
-                ,
-            };
+    for (string, 0..) |letter, i| {
+        const template = text.largeLetter(letter);
 
-        for (0..HEIGHT) |y| {
-            for (0..WIDTH) |x| {
-                const char_template = string[y * (WIDTH + 1) + x];
-                const char: u21 = if (self.ascii) switch (char_template) {
-                    '#' => '%',
-                    ',' => ',',
-                    '\'' => '\'',
-                    ']' => '%',
-                    '[' => '%',
-                    '.' => ' ',
-                    else => unreachable,
-                } else switch (char_template) {
-                    '#' => '█',
-                    ',' => '▄',
-                    '\'' => '▀',
-                    ']' => '▐',
-                    '[' => '▌',
-                    '.' => ' ',
-                    else => unreachable,
-                };
+        for (0..text.HEIGHT) |y| {
+            for (0..text.WIDTH) |x| {
+                const symbol = template[y * (text.WIDTH + 1) + x];
+                const char = text.translateSymbol(symbol, self.ascii);
 
                 frame.set(
                     origin_y + y,
-                    origin_x + i * (WIDTH + GAP_X) + x,
+                    origin_x + i * (text.WIDTH + text.GAP_X) + x,
                     .{
                         .char = char,
                         .fg = .white,
