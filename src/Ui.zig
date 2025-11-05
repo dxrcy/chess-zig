@@ -435,7 +435,15 @@ fn renderLargeTextLine(
         for (0..HEIGHT) |y| {
             for (0..WIDTH) |x| {
                 const char_template = string[y * (WIDTH + 1) + x];
-                const char: u21 = switch (char_template) {
+                const char: u21 = if (self.ascii) switch (char_template) {
+                    '#' => '%',
+                    ',' => ',',
+                    '\'' => '\'',
+                    ']' => '%',
+                    '[' => '%',
+                    '.' => ' ',
+                    else => unreachable,
+                } else switch (char_template) {
                     '#' => '█',
                     ',' => '▄',
                     '\'' => '▀',
