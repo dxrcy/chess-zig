@@ -74,8 +74,6 @@ pub fn exit(self: *Self) !void {
 }
 
 pub fn render(self: *Self, state: *const State) void {
-    const frame = self.getForeFrame();
-
     // Board tile
     for (0..Board.SIZE) |rank| {
         for (0..Board.SIZE) |file| {
@@ -95,46 +93,15 @@ pub fn render(self: *Self, state: *const State) void {
     for (0..Board.SIZE) |rank| {
         for (0..Board.SIZE) |file| {
             const tile = Tile{ .rank = rank, .file = file };
-            const piece = state.board.get(tile) orelse
-                continue;
-            const string = piece.string();
-
-            for (0..Piece.HEIGHT) |y| {
-                for (0..Piece.WIDTH) |x| {
-                    frame.set(
-                        rank * tile_size.HEIGHT + y + tile_size.PADDING_TOP,
-                        file * tile_size.WIDTH + x + tile_size.PADDING_LEFT,
-                        .{
-                            .char = string[y * Piece.HEIGHT + x],
-                            .fg = if (piece.player == .white) .cyan else .red,
-                            .bold = true,
-                        },
-                    );
-                }
+            if (state.board.get(tile)) |piece| {
+                self.renderPiece(piece, tile);
             }
         }
     }
 
+    // Taken piece icons
     for (state.board.taken_buffer[0..state.board.taken_count], 0..) |piece, i| {
-        const rank = Board.SIZE;
-        const file = i;
-
-        const string = piece.string();
-
-        // TODO: Extract as method
-        for (0..Piece.HEIGHT) |y| {
-            for (0..Piece.WIDTH) |x| {
-                frame.set(
-                    rank * tile_size.HEIGHT + y + tile_size.PADDING_TOP,
-                    file * tile_size.WIDTH + x + tile_size.PADDING_LEFT,
-                    .{
-                        .char = string[y * Piece.HEIGHT + x],
-                        .fg = if (piece.player == .white) .cyan else .red,
-                        .bold = true,
-                    },
-                );
-            }
-        }
+        self.renderPiece(piece, .{ .rank = Board.SIZE, .file = i });
     }
 
     // Selected, available moves
@@ -156,6 +123,26 @@ pub fn render(self: *Self, state: *const State) void {
         .fg = if (state.turn == .white) .cyan else .red,
         .bold = true,
     });
+}
+
+fn renderPiece(self: *Self, piece: Piece, tile: Tile) void {
+    var frame = self.getForeFrame();
+
+    const string = piece.string();
+
+    for (0..Piece.HEIGHT) |y| {
+        for (0..Piece.WIDTH) |x| {
+            frame.set(
+                tile.rank * tile_size.HEIGHT + y + tile_size.PADDING_TOP,
+                tile.file * tile_size.WIDTH + x + tile_size.PADDING_LEFT,
+                .{
+                    .char = string[y * Piece.HEIGHT + x],
+                    .fg = if (piece.player == .white) .cyan else .red,
+                    .bold = true,
+                },
+            );
+        }
+    }
 }
 
 fn getTileRect(tile: Tile) Rect {

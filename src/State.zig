@@ -26,7 +26,7 @@ pub const Player = enum(u8) {
 pub fn new() Self {
     return Self{
         .board = Board.new(),
-        .turn = .black,
+        .turn = .white,
         .focus = .{ .rank = 3, .file = 3 },
         .selected = null,
     };
