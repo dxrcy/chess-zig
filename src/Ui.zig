@@ -155,12 +155,19 @@ pub fn render(self: *Self, state: *const State) void {
 
     switch (state.status) {
         .win => |player| {
-            self.renderLargeText(&[_][]const u8{
+            self.renderTextLarge(&[_][]const u8{
                 "game",
                 "over",
             }, 14, 20);
-            // TODO:
-            _ = player;
+
+            const string = if (player == .white)
+                "Blue wins"
+            else
+                "Red wins";
+            const origin_x = (Board.SIZE * tile_size.WIDTH - string.len) / 2;
+            self.renderTextLineNormal(string, 26, origin_x, .{
+                .bold = true,
+            });
         },
 
         .play => |player| {
@@ -221,14 +228,36 @@ pub fn render(self: *Self, state: *const State) void {
     // }, 7, 5);
 }
 
-fn renderLargeText(
+fn renderTextLineNormal(
+    self: *Self,
+    string: []const u8,
+    origin_y: usize,
+    origin_x: usize,
+    options: Cell.Options,
+) void {
+    var frame = self.getForeFrame();
+
+    for (string, 0..) |char, x| {
+        frame.set(
+            origin_y,
+            origin_x + x,
+            (Cell.Options{
+                .char = char,
+                .fg = .white,
+                .bold = false,
+            }).join(options),
+        );
+    }
+}
+
+fn renderTextLarge(
     self: *Self,
     lines: []const []const u8,
     origin_y: usize,
     origin_x: usize,
 ) void {
     for (lines, 0..) |string, row| {
-        self.renderLargeTextLine(
+        self.renderTextLineLine(
             string,
             origin_y + row * (text.HEIGHT + text.GAP_Y),
             origin_x,
@@ -236,7 +265,7 @@ fn renderLargeText(
     }
 }
 
-fn renderLargeTextLine(
+fn renderTextLineLine(
     self: *Self,
     string: []const u8,
     origin_y: usize,
