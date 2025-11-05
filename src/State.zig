@@ -71,25 +71,22 @@ pub fn toggleSelection(self: *Self, allow_invalid: bool) void {
         return;
     };
 
-    self.selected = null;
-
-    if (self.board.get(selected) == null) {
-        return;
-    }
     if (selected.eql(self.focus)) {
+        self.selected = null;
         return;
     }
 
     const piece = self.board.get(selected);
-    if (piece == null or
-        piece.?.player != self.turn)
-    {
-        return;
-    }
+    assert(piece.?.player == self.turn);
 
     if (allow_invalid) {
+        if (self.board.get(self.focus)) |piece_taken| {
+            self.board.addTaken(piece_taken);
+        }
         self.board.set(self.focus, piece);
         self.board.set(selected, null);
+        self.turn = self.turn.flip();
+        self.selected = null;
     }
 
     const move = self.getAvailableMove(selected, self.focus) orelse
@@ -106,6 +103,7 @@ pub fn toggleSelection(self: *Self, allow_invalid: bool) void {
     self.board.set(selected, null);
 
     self.turn = self.turn.flip();
+    self.selected = null;
 }
 
 fn getAvailableMove(self: *const Self, origin: Tile, destination: Tile) ?moves.Move {
