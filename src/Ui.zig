@@ -85,13 +85,9 @@ pub fn render(self: *Self, state: *const State) void {
     for (0..Board.SIZE) |rank| {
         for (0..Board.SIZE) |file| {
             const tile = Tile{ .rank = rank, .file = file };
-            const bg: Color = if (tile.isEven()) .black else .bright_black;
             self.renderRectSolid(getTileRect(tile), .{
                 .char = ' ',
-                .bg = bg,
-            });
-            self.renderRectHighlight(getTileRect(tile), .{
-                .fg = bg,
+                .bg = if (tile.isEven()) .black else .bright_black,
             });
         }
     }
@@ -158,15 +154,42 @@ pub fn render(self: *Self, state: *const State) void {
     // Selected, available moves
     if (state.selected) |selected| {
         var available_moves = state.board.getAvailableMoves(selected);
+        var has_available = false;
         while (available_moves.next()) |available| {
-            self.renderRectSolid(getTileRect(available.destination), .{
-                .bg = .white,
-            });
+            has_available = true;
+
+            if (state.board.get(available.destination)) |piece| {
+                // Take direct
+                self.renderPiece(piece, available.destination, .{
+                    .fg = .bright_white,
+                });
+            } else {
+                // No take or take indirect
+                const piece = state.board.get(selected) orelse
+                    continue;
+
+                self.renderPiece(piece, available.destination, .{
+                    .fg = if (available.destination.isEven()) .bright_black else .black,
+                });
+
+                // Take indirect
+                if (available.take) |take| {
+                    self.renderPiece(piece, take, .{
+                        .fg = .white,
+                    });
+                }
+            }
         }
 
         self.renderRectSolid(getTileRect(selected), .{
-            .bg = .bright_white,
+            .bg = if (state.turn == .white) .cyan else .red,
         });
+
+        if (state.board.get(selected)) |piece| {
+            self.renderPiece(piece, selected, .{
+                .fg = if (has_available) .black else .white,
+            });
+        }
     }
 
     // Focus
@@ -249,12 +272,12 @@ fn renderRectHighlight(
         frame.set(
             rect.y,
             rect.x + x,
-            options.join(.{ .char = self.getEdge(.top) }),
+            (Cell.Options{ .char = self.getEdge(.top) }).join(options),
         );
         frame.set(
             rect.y + rect.h - 1,
             rect.x + x,
-            options.join(.{ .char = self.getEdge(.bottom) }),
+            (Cell.Options{ .char = self.getEdge(.bottom) }).join(options),
         );
     }
 
@@ -262,12 +285,12 @@ fn renderRectHighlight(
         frame.set(
             rect.y + y,
             rect.x,
-            options.join(.{ .char = self.getEdge(.left) }),
+            (Cell.Options{ .char = self.getEdge(.left) }).join(options),
         );
         frame.set(
             rect.y + y,
             rect.x + rect.w - 1,
-            options.join(.{ .char = self.getEdge(.right) }),
+            (Cell.Options{ .char = self.getEdge(.right) }).join(options),
         );
     }
 
@@ -285,7 +308,7 @@ fn renderRectHighlight(
         frame.set(
             rect.y + y * (rect.h - 1),
             rect.x + x * (rect.w - 1),
-            options.join(.{ .char = self.getEdge(edge) }),
+            (Cell.Options{ .char = self.getEdge(edge) }).join(options),
         );
     }
 }
