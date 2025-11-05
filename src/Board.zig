@@ -9,18 +9,15 @@ const Player = State.Player;
 const moves = @import("moves.zig");
 
 pub const SIZE: usize = 8;
-pub const MAX_PIECE_COUNT: usize = SIZE * 2 * 2;
+pub const MAX_PIECE_COUNT: usize = SIZE * 2 * Player.COUNT;
 
 tiles: [SIZE * SIZE]u8,
-// TODO: Create/use buffer+length container?
-taken_buffer: [MAX_PIECE_COUNT]Piece,
-taken_count: usize,
+taken: [Piece.Kind.COUNT * Player.COUNT]u32,
 
 pub fn new() Self {
     var self = Self{
         .tiles = [_]u8{0} ** SIZE ** SIZE,
-        .taken_buffer = undefined,
-        .taken_count = 0,
+        .taken = [1]u32{0} ** (Piece.Kind.COUNT * Player.COUNT),
     };
     for (0..8) |file| {
         self.set(.{ .rank = 1, .file = file }, .{ .kind = .pawn, .player = .white });
@@ -36,6 +33,7 @@ pub fn new() Self {
         self.set(.{ .rank = rank, .file = 6 }, .{ .kind = .knight, .player = player });
         self.set(.{ .rank = rank, .file = 7 }, .{ .kind = .rook, .player = player });
     }
+
     return self;
 }
 
@@ -47,7 +45,7 @@ pub fn get(self: *const Self, tile: Tile) ?Piece {
     if (value == 0) {
         return null;
     }
-    return Piece.fromInt(value);
+    return Piece.fromInt(value - 1);
 }
 
 pub fn set(self: *Self, tile: Tile, piece: ?Piece) void {
@@ -55,10 +53,18 @@ pub fn set(self: *Self, tile: Tile, piece: ?Piece) void {
     assert(tile.file < SIZE);
 
     const value = if (piece) |piece_unwrapped|
-        piece_unwrapped.toInt()
+        piece_unwrapped.toInt() + 1
     else
         0;
     self.tiles[tile.rank * SIZE + tile.file] = value;
+}
+
+pub fn getTaken(self: *const Self, piece: Piece) u32 {
+    return self.taken[piece.toInt()];
+}
+
+pub fn addTaken(self: *Self, piece: Piece) void {
+    self.taken[piece.toInt()] += 1;
 }
 
 pub const Tile = struct {
@@ -78,13 +84,15 @@ pub const Piece = struct {
     kind: Kind,
     player: Player,
 
-    pub const Kind = enum(u8) {
-        pawn = 1,
+    pub const Kind = enum(u3) {
+        pawn,
         rook,
         knight,
         bishop,
         king,
         queen,
+
+        pub const COUNT: u8 = @typeInfo(Kind).@"enum".fields.len;
     };
 
     pub const HEIGHT: usize = 3;
@@ -116,14 +124,14 @@ pub const Piece = struct {
 
     pub fn fromInt(value: u8) Piece {
         return Piece{
-            .kind = @enumFromInt(value & 0b111),
-            .player = @enumFromInt(value >> 3),
+            .kind = @enumFromInt(value % Kind.COUNT),
+            .player = @enumFromInt(value / Kind.COUNT),
         };
     }
 
     pub fn toInt(self: Piece) u8 {
         return @intFromEnum(self.kind) +
-            (@intFromEnum(self.player) << 3);
+            @intFromEnum(self.player) * Kind.COUNT;
     }
 };
 

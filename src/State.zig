@@ -14,9 +14,11 @@ turn: Player,
 focus: Tile,
 selected: ?Tile,
 
-pub const Player = enum(u8) {
+pub const Player = enum(u1) {
     white = 0,
     black = 1,
+
+    pub const COUNT = 2;
 
     pub fn flip(self: Player) Player {
         return if (self == .white) .black else .white;
@@ -96,9 +98,7 @@ pub fn toggleSelection(self: *Self, allow_invalid: bool) void {
 
     if (move.take) |take| {
         const piece_taken = self.board.get(take) orelse unreachable;
-        self.board.taken_buffer[self.board.taken_count] = piece_taken;
-        self.board.taken_count += 1;
-
+        self.board.addTaken(piece_taken);
         self.board.set(take, null);
     }
 

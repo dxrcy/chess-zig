@@ -1,5 +1,8 @@
 const Self = @This();
 
+const std = @import("std");
+const assert = std.debug.assert;
+
 const State = @import("State.zig");
 const Board = State.Board;
 const Piece = State.Piece;
@@ -25,10 +28,12 @@ pub fn new() Self {
 }
 
 pub fn set(self: *Self, y: usize, x: usize, options: Cell.Options) void {
+    assert(x < WIDTH and y < HEIGHT);
     self.cells[y * WIDTH + x].apply(options);
 }
 
 pub fn get(self: *Self, y: usize, x: usize) *Cell {
+    assert(x < WIDTH and y < HEIGHT);
     return &self.cells[y * WIDTH + x];
 }
 

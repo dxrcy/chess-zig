@@ -5,6 +5,7 @@ const assert = std.debug.assert;
 const posix = std.posix;
 
 const State = @import("State.zig");
+const Player = State.Player;
 const Board = State.Board;
 const Piece = State.Board.Piece;
 const Tile = State.Tile;
@@ -13,6 +14,7 @@ const Terminal = @import("Terminal.zig");
 const Color = Terminal.Attributes.Color;
 
 const Frame = @import("Frame.zig");
+const Cell = Frame.Cell;
 
 terminal: Terminal,
 frames: [2]Frame,
@@ -74,6 +76,11 @@ pub fn exit(self: *Self) !void {
 }
 
 pub fn render(self: *Self, state: *const State) void {
+    // Clear entire frame
+    for (&self.getForeFrame().cells) |*cell| {
+        cell.* = .{};
+    }
+
     // Board tile
     for (0..Board.SIZE) |rank| {
         for (0..Board.SIZE) |file| {
@@ -94,14 +101,58 @@ pub fn render(self: *Self, state: *const State) void {
         for (0..Board.SIZE) |file| {
             const tile = Tile{ .rank = rank, .file = file };
             if (state.board.get(tile)) |piece| {
-                self.renderPiece(piece, tile);
+                self.renderPiece(piece, tile, .{});
             }
         }
     }
 
     // Taken piece icons
-    for (state.board.taken_buffer[0..state.board.taken_count], 0..) |piece, i| {
-        self.renderPiece(piece, .{ .rank = Board.SIZE, .file = i });
+    for (std.meta.tags(Player), 0..) |player, y| {
+        var x: usize = 0;
+
+        for (std.meta.tags(Piece.Kind)) |kind| {
+            const piece = Piece{ .kind = kind, .player = player };
+
+            const count = state.board.getTaken(piece);
+            if (count == 0) {
+                continue;
+            }
+
+            const tile = Tile{
+                .rank = Board.SIZE + y,
+                .file = x % Board.SIZE,
+            };
+
+            self.renderPiece(piece, tile, .{});
+
+            if (count > 1) {
+                self.renderDecimalInt(
+                    count,
+                    tile.rank * tile_size.HEIGHT + 1,
+                    tile.file * tile_size.WIDTH + tile_size.PADDING_LEFT + Piece.WIDTH + 1,
+                    .{
+                        .fg = .yellow,
+                        .bold = true,
+                    },
+                );
+            }
+
+            x += 1;
+        }
+
+        // Placeholder
+        if (x == 0) {
+            const piece = Piece{ .kind = .pawn, .player = player };
+            const tile = Tile{
+                .rank = Board.SIZE + y,
+                .file = x % Board.SIZE,
+            };
+
+            self.renderPiece(piece, tile, .{
+                .fg = .bright_black,
+                .bold = false,
+            });
+        }
     }
 
     // Selected, available moves
@@ -125,7 +176,26 @@ pub fn render(self: *Self, state: *const State) void {
     });
 }
 
-fn renderPiece(self: *Self, piece: Piece, tile: Tile) void {
+fn renderDecimalInt(
+    self: *Self,
+    value: anytype,
+    y: usize,
+    x: usize,
+    options: Cell.Options,
+) void {
+    var frame = self.getForeFrame();
+
+    const char = if (value < 10)
+        @as(u8, @intCast(value)) + '0'
+    else
+        '*';
+
+    frame.set(y, x, options.join(.{
+        .char = char,
+    }));
+}
+
+fn renderPiece(self: *Self, piece: Piece, tile: Tile, options: Cell.Options) void {
     var frame = self.getForeFrame();
 
     const string = piece.string();
@@ -135,11 +205,11 @@ fn renderPiece(self: *Self, piece: Piece, tile: Tile) void {
             frame.set(
                 tile.rank * tile_size.HEIGHT + y + tile_size.PADDING_TOP,
                 tile.file * tile_size.WIDTH + x + tile_size.PADDING_LEFT,
-                .{
+                (Cell.Options{
                     .char = string[y * Piece.HEIGHT + x],
                     .fg = if (piece.player == .white) .cyan else .red,
                     .bold = true,
-                },
+                }).join(options),
             );
         }
     }
@@ -157,7 +227,7 @@ fn getTileRect(tile: Tile) Rect {
 fn renderRectSolid(
     self: *Self,
     rect: Rect,
-    options: Frame.Cell.Options,
+    options: Cell.Options,
 ) void {
     var frame = self.getForeFrame();
 
@@ -171,7 +241,7 @@ fn renderRectSolid(
 fn renderRectHighlight(
     self: *Self,
     rect: Rect,
-    options: Frame.Cell.Options,
+    options: Cell.Options,
 ) void {
     var frame = self.getForeFrame();
 
