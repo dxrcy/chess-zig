@@ -17,6 +17,10 @@ selected: ?Tile,
 pub const Player = enum(u8) {
     white = 0,
     black = 1,
+
+    pub fn flip(self: Player) Player {
+        return if (self == .white) .black else .white;
+    }
 };
 
 pub fn new() Self {
@@ -91,13 +95,17 @@ pub fn toggleSelection(self: *Self, allow_invalid: bool) void {
     assert(move.destination.eql(self.focus));
 
     if (move.take) |take| {
+        const piece_taken = self.board.get(take) orelse unreachable;
+        self.board.taken_buffer[self.board.taken_count] = piece_taken;
+        self.board.taken_count += 1;
+
         self.board.set(take, null);
     }
 
     self.board.set(self.focus, piece);
     self.board.set(selected, null);
 
-    self.turn = if (self.turn == .white) .black else .white;
+    self.turn = self.turn.flip();
 }
 
 fn getAvailableMove(self: *const Self, origin: Tile, destination: Tile) ?moves.Move {

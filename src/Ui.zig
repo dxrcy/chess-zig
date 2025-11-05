@@ -115,6 +115,28 @@ pub fn render(self: *Self, state: *const State) void {
         }
     }
 
+    for (state.board.taken_buffer[0..state.board.taken_count], 0..) |piece, i| {
+        const rank = Board.SIZE;
+        const file = i;
+
+        const string = piece.string();
+
+        // TODO: Extract as method
+        for (0..Piece.HEIGHT) |y| {
+            for (0..Piece.WIDTH) |x| {
+                frame.set(
+                    rank * tile_size.HEIGHT + y + tile_size.PADDING_TOP,
+                    file * tile_size.WIDTH + x + tile_size.PADDING_LEFT,
+                    .{
+                        .char = string[y * Piece.HEIGHT + x],
+                        .fg = if (piece.player == .white) .cyan else .red,
+                        .bold = true,
+                    },
+                );
+            }
+        }
+    }
+
     // Selected, available moves
     if (state.selected) |selected| {
         var available_moves = state.board.getAvailableMoves(selected);

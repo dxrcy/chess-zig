@@ -9,12 +9,18 @@ const Player = State.Player;
 const moves = @import("moves.zig");
 
 pub const SIZE: usize = 8;
+pub const MAX_PIECE_COUNT: usize = SIZE * 2 * 2;
 
 tiles: [SIZE * SIZE]u8,
+// TODO: Create/use buffer+length container?
+taken_buffer: [MAX_PIECE_COUNT]Piece,
+taken_count: usize,
 
 pub fn new() Self {
     var self = Self{
         .tiles = [_]u8{0} ** SIZE ** SIZE,
+        .taken_buffer = undefined,
+        .taken_count = 0,
     };
     for (0..8) |file| {
         self.set(.{ .rank = 1, .file = file }, .{ .kind = .pawn, .player = .white });

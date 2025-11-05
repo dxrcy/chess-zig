@@ -106,7 +106,7 @@ pub const AvailableMoves = struct {
 
         return Move{
             .destination = destination,
-            .take = context.getTakeTile(),
+            .take = context.getTakeActual(),
         };
     }
 };
@@ -273,7 +273,7 @@ const Requirement = struct {
         rule: MoveRule,
 
         pub fn willTake(self: *const Context) enum { invalid, take, no_take } {
-            const tile_take = self.getTakeTile() orelse {
+            const tile_take = self.getTakeOptional() orelse {
                 return .invalid;
             };
             const piece_take = self.board.get(tile_take) orelse {
@@ -288,11 +288,23 @@ const Requirement = struct {
         /// Assumes `self.destination` is an opposite piece, if
         /// `self.rule.take_alt` is `null`.
         // TODO: Change somehow to prevent the weird above assumption
-        pub fn getTakeTile(self: *const Context) ?Tile {
+        // TODO: Rename
+        pub fn getTakeOptional(self: *const Context) ?Tile {
             if (self.rule.take_alt) |take| {
                 return take.applyTo(self.origin, self.piece);
             }
             return self.destination;
+        }
+
+        // TODO: Rename
+        // TODO: Document
+        pub fn getTakeActual(self: *const Context) ?Tile {
+            const tile = self.getTakeOptional() orelse
+                return null;
+            const piece = self.board.get(tile) orelse
+                return null;
+            assert(piece.player == self.piece.player.flip());
+            return tile;
         }
     };
 };

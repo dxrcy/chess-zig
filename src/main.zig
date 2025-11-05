@@ -49,7 +49,7 @@ pub fn main() !void {
             0x20 => state.toggleSelection(false),
             0x1b => state.selected = null,
 
-            't' => state.turn = if (state.turn == .white) .black else .white,
+            't' => state.turn = state.turn.flip(),
             'y' => state.toggleSelection(true),
 
             else => {},
