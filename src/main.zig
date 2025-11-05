@@ -53,7 +53,7 @@ pub fn main() !void {
                 state.selected = null;
             },
 
-            'r' => if (state.status == .game_over) {
+            'r' => if (state.status == .win) {
                 state.resetGame();
             },
 

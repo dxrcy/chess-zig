@@ -15,9 +15,10 @@ turn: Player,
 focus: Tile,
 selected: ?Tile,
 
-const Status = enum {
-    play,
-    game_over,
+const Status = union(enum) {
+    // TODO: Move `State.turn` here
+    play: void,
+    win: Player,
 };
 
 pub const Player = enum(u1) {
@@ -126,11 +127,12 @@ pub fn toggleSelection(self: *Self, allow_invalid: bool) void {
 fn updateStatus(self: *Self) void {
     const alive_white = self.board.isPieceAlive(.{ .kind = .king, .player = .white });
     const alive_black = self.board.isPieceAlive(.{ .kind = .king, .player = .black });
+
     assert(alive_white or alive_black);
     if (!alive_white) {
-        self.status = .game_over;
+        self.status = .{ .win = .black };
     } else if (!alive_black) {
-        self.status = .game_over;
+        self.status = .{ .win = .white };
     }
 }
 

@@ -153,7 +153,7 @@ pub fn render(self: *Self, state: *const State) void {
         }
     }
 
-    if (state.status == .game_over) {
+    if (state.status == .win) {
         self.renderLargeText(&[_][]const u8{
             "game",
             "over",
