@@ -175,6 +175,7 @@ pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
                 .dest = .{ .offset = .{ .advance = .{ .rank = 1, .file = 0 } } },
                 .requirement = .{ .take = .never },
             },
+            // First move, 2 tiles
             .{
                 .dest = .{ .offset = .{ .advance = .{ .rank = 2, .file = 0 } } },
                 .requirement = .{
@@ -183,6 +184,7 @@ pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
                     .free = .{ .advance = .{ .rank = 1, .file = 0 } },
                 },
             },
+            // Normal take
             .{
                 .dest = .{ .offset = .{ .advance = .{ .rank = 1, .file = -1 } } },
                 .requirement = .{ .take = .always },
@@ -191,6 +193,7 @@ pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
                 .dest = .{ .offset = .{ .advance = .{ .rank = 1, .file = 1 } } },
                 .requirement = .{ .take = .always },
             },
+            // En-passant take
             .{
                 .dest = .{ .offset = .{ .advance = .{ .rank = 1, .file = -1 } } },
                 .take_alt = .{ .real = .{ .rank = 0, .file = -1 } },
@@ -202,16 +205,6 @@ pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
                 .requirement = .{ .take = .always },
             },
         },
-        .knight => &[_]MoveRule{
-            .{ .dest = .{ .offset = .{ .real = .{ .rank = -1, .file = -2 } } } },
-            .{ .dest = .{ .offset = .{ .real = .{ .rank = -2, .file = -1 } } } },
-            .{ .dest = .{ .offset = .{ .real = .{ .rank = -1, .file = 2 } } } },
-            .{ .dest = .{ .offset = .{ .real = .{ .rank = -2, .file = 1 } } } },
-            .{ .dest = .{ .offset = .{ .real = .{ .rank = 1, .file = -2 } } } },
-            .{ .dest = .{ .offset = .{ .real = .{ .rank = 2, .file = -1 } } } },
-            .{ .dest = .{ .offset = .{ .real = .{ .rank = 1, .file = 2 } } } },
-            .{ .dest = .{ .offset = .{ .real = .{ .rank = 2, .file = 1 } } } },
-        },
         .king => &[_]MoveRule{
             .{ .dest = .{ .offset = .{ .real = .{ .rank = -1, .file = -1 } } } },
             .{ .dest = .{ .offset = .{ .real = .{ .rank = -1, .file = 0 } } } },
@@ -221,6 +214,7 @@ pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
             .{ .dest = .{ .offset = .{ .real = .{ .rank = 1, .file = -1 } } } },
             .{ .dest = .{ .offset = .{ .real = .{ .rank = 1, .file = 0 } } } },
             .{ .dest = .{ .offset = .{ .real = .{ .rank = 1, .file = 1 } } } },
+            // Castling (kingside)
             .{
                 .dest = .{ .offset = .{ .real = .{ .rank = 0, .file = 2 } } },
                 .move_alt = .{
@@ -234,11 +228,36 @@ pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
                     .file = 4,
                     .not_check = true,
                 },
-                // TODO: Additional `free` square, for queenside (hard code)
                 // TODO: King does not finish in square which is attacked
                 // TODO: King does not pass square which is attacked
                 // TODO: (LATER) has never moved (king or rook)
             },
+            // Castling (queenside)
+            .{
+                .dest = .{ .offset = .{ .real = .{ .rank = 0, .file = -3 } } },
+                .move_alt = .{
+                    .kind = .rook,
+                    .origin = .{ .real = .{ .rank = 0, .file = -4 } },
+                    .destination = .{ .real = .{ .rank = 0, .file = -2 } },
+                },
+                .requirement = .{
+                    .take = .never,
+                    .home_rank = 0,
+                    .file = 4,
+                    .not_check = true,
+                    .free = .{ .real = .{ .rank = 0, .file = -1 } },
+                },
+            },
+        },
+        .knight => &[_]MoveRule{
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = -1, .file = -2 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = -2, .file = -1 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = -1, .file = 2 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = -2, .file = 1 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = 1, .file = -2 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = 2, .file = -1 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = 1, .file = 2 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = 2, .file = 1 } } } },
         },
         .rook => &[_]MoveRule{
             .{ .dest = .{ .line = .{ .rank = -1, .file = 0 } } },
