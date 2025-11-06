@@ -21,16 +21,19 @@ pub const AvailableMoves = struct {
 
     board: *const Board,
     origin: Tile,
-    ignore_check: bool,
+    /// If `true`, requirement checking will never itself check available moves
+    /// (recursively).
+    /// To prevent recursion >1 for check/attacked requirement.
+    no_recurse: bool,
 
     index: usize,
     line_index: usize,
 
-    pub fn new(board: *const Board, origin: Tile, ignore_check: bool) Self {
+    pub fn new(board: *const Board, origin: Tile, no_recurse: bool) Self {
         return Self{
             .board = board,
             .origin = origin,
-            .ignore_check = ignore_check,
+            .no_recurse = no_recurse,
             .index = 0,
             .line_index = 0,
         };
@@ -56,7 +59,7 @@ pub const AvailableMoves = struct {
     }
 
     fn checkAllows(self: *Self, piece: Piece, move: Move) bool {
-        if (self.ignore_check or !self.board.isPlayerInCheck(piece.player)) {
+        if (self.no_recurse or !self.board.isPlayerInCheck(piece.player)) {
             return true;
         }
 
@@ -124,7 +127,7 @@ pub const AvailableMoves = struct {
             .piece = piece,
             .origin = self.origin,
             .destination = destination,
-            .ignore_check = self.ignore_check,
+            .no_recurse = self.no_recurse,
             .rule = rule,
         };
 
@@ -152,7 +155,9 @@ pub const AvailableMoves = struct {
 
 pub const MoveRule = struct {
     dest: union(enum) {
+        // TODO: Rename
         offset: Offset,
+        // TODO: Rename
         line: RealOffset,
     },
     /// If piece to take is different to destination (eg. in en-passant).
@@ -226,8 +231,8 @@ pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
                     .take = .never,
                     .home_rank = 0,
                     .file = 4,
-                    .not_check = true,
                     .not_attacked = &[_]Offset{
+                        .{ .real = .{ .rank = 0, .file = 0 } },
                         .{ .real = .{ .rank = 0, .file = 1 } },
                         .{ .real = .{ .rank = 0, .file = 2 } },
                     },
@@ -247,9 +252,9 @@ pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
                     .take = .never,
                     .home_rank = 0,
                     .file = 4,
-                    .not_check = true,
                     .free = .{ .real = .{ .rank = 0, .file = -1 } },
                     .not_attacked = &[_]Offset{
+                        .{ .real = .{ .rank = 0, .file = 0 } },
                         .{ .real = .{ .rank = 0, .file = -1 } },
                         .{ .real = .{ .rank = 0, .file = -2 } },
                         .{ .real = .{ .rank = 0, .file = -3 } },
@@ -308,10 +313,8 @@ const Requirement = struct {
     /// For en-passant.
     /// Similar to `MoveRule.position.line`.
     free: ?Offset = null,
-    /// If `true`, rule is invalid while in check.
-    // TODO: Use `not_attacked` with 0 offset instead
-    not_check: bool = false,
-    // TODO: Document
+    /// If `true`, rule is invalid while in this piece is attacked by other
+    /// player.
     not_attacked: []const Offset = &[0]Offset{},
 
     // ...also possible to add a fn pointer field for any custom behavior
@@ -329,7 +332,6 @@ const Requirement = struct {
             self.isHomeRankSatisfied(context) and
             self.isFileSatisfied(context) and
             self.isFreeSatisfied(context) and
-            self.isNotCheckSatisfied(context) and
             self.isNotAttackedSatisfied(context) and
             self.isMoveAltSatisfied(context);
     }
@@ -378,24 +380,8 @@ const Requirement = struct {
         return context.board.get(tile) == null;
     }
 
-    fn isNotCheckSatisfied(self: *const Self, context: Context) bool {
-        if (!self.not_check) {
-            return true;
-        }
-
-        if (context.ignore_check) {
-            return true;
-        }
-
-        return !context.board.isPlayerInCheck(context.piece.player);
-    }
-
     fn isNotAttackedSatisfied(self: *const Self, context: Context) bool {
-        if (!self.not_check) {
-            return true;
-        }
-
-        if (context.ignore_check) {
+        if (context.no_recurse) {
             return true;
         }
 
@@ -446,7 +432,7 @@ const Requirement = struct {
         destination: Tile,
         // TODO: Rename `ignore_attacked` or something.
         // And in `AvailableMoves` as well.
-        ignore_check: bool,
+        no_recurse: bool,
         rule: MoveRule,
 
         pub fn willTake(self: *const Context) enum { invalid, take, no_take } {
