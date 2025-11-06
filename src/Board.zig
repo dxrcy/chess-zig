@@ -30,8 +30,8 @@ pub fn new() Self {
         self.set(.{ .rank = rank, .file = 0 }, .{ .kind = .rook, .player = player });
         self.set(.{ .rank = rank, .file = 1 }, .{ .kind = .knight, .player = player });
         self.set(.{ .rank = rank, .file = 2 }, .{ .kind = .bishop, .player = player });
-        self.set(.{ .rank = rank, .file = 3 }, .{ .kind = .king, .player = player });
-        self.set(.{ .rank = rank, .file = 4 }, .{ .kind = .queen, .player = player });
+        self.set(.{ .rank = rank, .file = 4 }, .{ .kind = .king, .player = player });
+        self.set(.{ .rank = rank, .file = 3 }, .{ .kind = .queen, .player = player });
         self.set(.{ .rank = rank, .file = 5 }, .{ .kind = .bishop, .player = player });
         self.set(.{ .rank = rank, .file = 6 }, .{ .kind = .knight, .player = player });
         self.set(.{ .rank = rank, .file = 7 }, .{ .kind = .rook, .player = player });
@@ -193,10 +193,10 @@ pub const Piece = struct {
             \\(^))_(/_\
             ,
             .king =>
-            \\\^/]_[/_\
+            \\[+])_(/_\
             ,
             .queen =>
-            \\[+])_(/_\
+            \\\^/]_[/_\
             ,
         };
     }
