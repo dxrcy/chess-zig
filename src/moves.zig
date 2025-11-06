@@ -8,6 +8,12 @@ const Piece = Board.Piece;
 pub const Move = struct {
     destination: Tile,
     take: ?Tile,
+    move_alt: ?MoveAlt,
+
+    const MoveAlt = struct {
+        origin: Tile,
+        destination: Tile,
+    };
 };
 
 pub const AvailableMoves = struct {
@@ -126,9 +132,20 @@ pub const AvailableMoves = struct {
             return null;
         }
 
+        // TODO: Extract as method?
+        const move_alt = if (rule.move_alt) |move_alt| blk: {
+            break :blk Move.MoveAlt{
+                .origin = move_alt.origin.applyTo(self.origin, piece) orelse
+                    unreachable,
+                .destination = move_alt.destination.applyTo(self.origin, piece) orelse
+                    unreachable,
+            };
+        } else null;
+
         return Move{
             .destination = destination,
             .take = context.getTakeTile(),
+            .move_alt = move_alt,
         };
     }
 };
@@ -140,7 +157,15 @@ pub const MoveRule = struct {
     },
     /// If piece to take is different to destination (eg. in en-passant).
     take_alt: ?Offset = null,
+    /// If another piece of the same colour is moved (eg. in castling).
+    move_alt: ?MoveAlt = null,
     requirement: Requirement = .{},
+
+    const MoveAlt = struct {
+        kind: Piece.Kind,
+        origin: Offset,
+        destination: Offset,
+    };
 };
 
 pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
@@ -196,6 +221,20 @@ pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
             .{ .position = .{ .offset = .{ .real = .{ .rank = 1, .file = -1 } } } },
             .{ .position = .{ .offset = .{ .real = .{ .rank = 1, .file = 0 } } } },
             .{ .position = .{ .offset = .{ .real = .{ .rank = 1, .file = 1 } } } },
+            .{
+                .position = .{ .offset = .{ .real = .{ .rank = 0, .file = -2 } } },
+                .move_alt = .{
+                    .kind = .rook,
+                    .origin = .{ .real = .{ .rank = 0, .file = -3 } },
+                    .destination = .{ .real = .{ .rank = 0, .file = -1 } },
+                },
+                // TODO: Line of sight
+                // TODO: Correct position
+                // TODO: Not in check
+                // TODO: King does not finish in square which is attacked
+                // TODO: King does not pass square which is attacked
+                // TODO: (LATER) has never moved (king or rook)
+            },
         },
         .rook => &[_]MoveRule{
             .{ .position = .{ .line = .{ .rank = -1, .file = 0 } } },
@@ -248,7 +287,8 @@ const Requirement = struct {
 
         return self.isTakeSatisfied(context) and
             self.isHomeRankSatisfied(context) and
-            self.isFreeSatisfied(context);
+            self.isFreeSatisfied(context) and
+            self.isMoveAltSatisfied(context);
     }
 
     fn isTakeSatisfied(self: *const Self, context: Context) bool {
@@ -285,6 +325,34 @@ const Requirement = struct {
             return true;
         };
         return context.board.get(tile) == null;
+    }
+
+    fn isMoveAltSatisfied(self: *const Self, context: Context) bool {
+        _ = self;
+        const move_alt = context.rule.move_alt orelse {
+            return true;
+        };
+
+        const origin = move_alt.origin.applyTo(context.origin, context.piece) orelse {
+            return false;
+        };
+        const piece = context.board.get(origin) orelse {
+            return false;
+        };
+        if (piece.kind != move_alt.kind or
+            piece.player != context.piece.player)
+        {
+            return false;
+        }
+
+        const destination = move_alt.destination.applyTo(context.origin, context.piece) orelse {
+            return false;
+        };
+        if (context.board.get(destination) != null) {
+            return false;
+        }
+
+        return true;
     }
 
     pub const Context = struct {

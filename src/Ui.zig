@@ -212,6 +212,13 @@ pub fn render(self: *Self, state: *const State) void {
                             });
                         }
                     }
+
+                    if (available.move_alt) |move_alt| {
+                        const piece = state.board.get(move_alt.origin) orelse unreachable;
+                        self.renderPiece(piece, move_alt.origin, .{
+                            .fg = .white,
+                        });
+                    }
                 }
 
                 self.renderRectSolid(getTileRect(selected), .{

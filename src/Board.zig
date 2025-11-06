@@ -70,7 +70,7 @@ pub fn addTaken(self: *Self, piece: Piece) void {
     self.taken[piece.toInt()] += 1;
 }
 
-// TODO: Create iterator for pieces/tiles
+// TODO: Create iterator for pieces/tiles?
 
 pub fn getTileOfFirst(self: *const Self, target: Piece) ?Tile {
     for (0..SIZE) |rank| {
@@ -86,7 +86,6 @@ pub fn getTileOfFirst(self: *const Self, target: Piece) ?Tile {
     return null;
 }
 
-// TODO: Remove and inline
 pub fn isPieceAlive(self: *const Self, target: Piece) bool {
     return self.getTileOfFirst(target) != null;
 }
@@ -134,9 +133,16 @@ pub fn applyMove(self: *Self, origin: Tile, move: Move) void {
         self.set(take, null);
     }
 
-    const piece = self.get(origin) orelse unreachable;
+    if (move.move_alt) |move_alt| {
+        self.movePieceToEmpty(move_alt.origin, move_alt.destination);
+    }
 
-    self.set(move.destination, piece);
+    self.movePieceToEmpty(origin, move.destination);
+}
+
+fn movePieceToEmpty(self: *Self, origin: Tile, destination: Tile) void {
+    const piece = self.get(origin) orelse unreachable;
+    self.set(destination, piece);
     self.set(origin, null);
 }
 
