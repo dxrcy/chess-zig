@@ -1,0 +1,136 @@
+const moves = @import("moves.zig");
+const MoveRule = moves.MoveRule;
+const Offset = moves.Offset;
+
+pub const RULES = &[_][]const MoveRule{
+    // PAWN
+    &[_]MoveRule{
+        .{
+            .dest = .{ .single = .{ .advance = .{ .rank = 1, .file = 0 } } },
+            .requirement = .{ .take = .never },
+        },
+        // First move, 2 tiles
+        .{
+            .dest = .{ .single = .{ .advance = .{ .rank = 2, .file = 0 } } },
+            .requirement = .{
+                .take = .never,
+                .home_rank = 1,
+                .free = .{ .advance = .{ .rank = 1, .file = 0 } },
+            },
+        },
+        // Normal take
+        .{
+            .dest = .{ .single = .{ .advance = .{ .rank = 1, .file = -1 } } },
+            .requirement = .{ .take = .always },
+        },
+        .{
+            .dest = .{ .single = .{ .advance = .{ .rank = 1, .file = 1 } } },
+            .requirement = .{ .take = .always },
+        },
+        // En-passant take
+        .{
+            .dest = .{ .single = .{ .advance = .{ .rank = 1, .file = -1 } } },
+            .take_alt = .{ .absolute = .{ .rank = 0, .file = -1 } },
+            .requirement = .{ .take = .always },
+        },
+        .{
+            .dest = .{ .single = .{ .advance = .{ .rank = 1, .file = 1 } } },
+            .take_alt = .{ .absolute = .{ .rank = 0, .file = 1 } },
+            .requirement = .{ .take = .always },
+        },
+    },
+
+    // ROOK
+    &[_]MoveRule{
+        .{ .dest = .{ .many = .{ .rank = -1, .file = 0 } } },
+        .{ .dest = .{ .many = .{ .rank = 1, .file = 0 } } },
+        .{ .dest = .{ .many = .{ .rank = 0, .file = -1 } } },
+        .{ .dest = .{ .many = .{ .rank = 0, .file = 1 } } },
+    },
+
+    // KNIGHT
+    &[_]MoveRule{
+        .{ .dest = .{ .single = .{ .absolute = .{ .rank = -1, .file = -2 } } } },
+        .{ .dest = .{ .single = .{ .absolute = .{ .rank = -2, .file = -1 } } } },
+        .{ .dest = .{ .single = .{ .absolute = .{ .rank = -1, .file = 2 } } } },
+        .{ .dest = .{ .single = .{ .absolute = .{ .rank = -2, .file = 1 } } } },
+        .{ .dest = .{ .single = .{ .absolute = .{ .rank = 1, .file = -2 } } } },
+        .{ .dest = .{ .single = .{ .absolute = .{ .rank = 2, .file = -1 } } } },
+        .{ .dest = .{ .single = .{ .absolute = .{ .rank = 1, .file = 2 } } } },
+        .{ .dest = .{ .single = .{ .absolute = .{ .rank = 2, .file = 1 } } } },
+    },
+
+    // BISHOP
+    &[_]MoveRule{
+        .{ .dest = .{ .many = .{ .rank = -1, .file = -1 } } },
+        .{ .dest = .{ .many = .{ .rank = -1, .file = 1 } } },
+        .{ .dest = .{ .many = .{ .rank = 1, .file = -1 } } },
+        .{ .dest = .{ .many = .{ .rank = 1, .file = 1 } } },
+    },
+
+    // KING
+    &[_]MoveRule{
+        .{ .dest = .{ .single = .{ .absolute = .{ .rank = -1, .file = -1 } } } },
+        .{ .dest = .{ .single = .{ .absolute = .{ .rank = -1, .file = 0 } } } },
+        .{ .dest = .{ .single = .{ .absolute = .{ .rank = -1, .file = 1 } } } },
+        .{ .dest = .{ .single = .{ .absolute = .{ .rank = 0, .file = -1 } } } },
+        .{ .dest = .{ .single = .{ .absolute = .{ .rank = 0, .file = 1 } } } },
+        .{ .dest = .{ .single = .{ .absolute = .{ .rank = 1, .file = -1 } } } },
+        .{ .dest = .{ .single = .{ .absolute = .{ .rank = 1, .file = 0 } } } },
+        .{ .dest = .{ .single = .{ .absolute = .{ .rank = 1, .file = 1 } } } },
+        // Castling (kingside)
+        .{
+            .dest = .{ .single = .{ .absolute = .{ .rank = 0, .file = 2 } } },
+            .move_alt = .{
+                .kind = .rook,
+                .origin = .{ .absolute = .{ .rank = 0, .file = 3 } },
+                .destination = .{ .absolute = .{ .rank = 0, .file = 1 } },
+            },
+            .requirement = .{
+                .take = .never,
+                .home_rank = 0,
+                .file = 4,
+                .not_attacked = &[_]Offset{
+                    .{ .absolute = .{ .rank = 0, .file = 0 } },
+                    .{ .absolute = .{ .rank = 0, .file = 1 } },
+                    .{ .absolute = .{ .rank = 0, .file = 2 } },
+                },
+            },
+            // TODO: (LATER) has never moved (king or rook) requires
+            // tracking and storing piece movements (or movement count)
+        },
+        // Castling (queenside)
+        .{
+            .dest = .{ .single = .{ .absolute = .{ .rank = 0, .file = -3 } } },
+            .move_alt = .{
+                .kind = .rook,
+                .origin = .{ .absolute = .{ .rank = 0, .file = -4 } },
+                .destination = .{ .absolute = .{ .rank = 0, .file = -2 } },
+            },
+            .requirement = .{
+                .take = .never,
+                .home_rank = 0,
+                .file = 4,
+                .free = .{ .absolute = .{ .rank = 0, .file = -1 } },
+                .not_attacked = &[_]Offset{
+                    .{ .absolute = .{ .rank = 0, .file = 0 } },
+                    .{ .absolute = .{ .rank = 0, .file = -1 } },
+                    .{ .absolute = .{ .rank = 0, .file = -2 } },
+                    .{ .absolute = .{ .rank = 0, .file = -3 } },
+                },
+            },
+        },
+    },
+
+    // QUEEN
+    &[_]MoveRule{
+        .{ .dest = .{ .many = .{ .rank = -1, .file = 0 } } },
+        .{ .dest = .{ .many = .{ .rank = 1, .file = 0 } } },
+        .{ .dest = .{ .many = .{ .rank = 0, .file = -1 } } },
+        .{ .dest = .{ .many = .{ .rank = 0, .file = 1 } } },
+        .{ .dest = .{ .many = .{ .rank = -1, .file = -1 } } },
+        .{ .dest = .{ .many = .{ .rank = -1, .file = 1 } } },
+        .{ .dest = .{ .many = .{ .rank = 1, .file = -1 } } },
+        .{ .dest = .{ .many = .{ .rank = 1, .file = 1 } } },
+    },
+};

@@ -22,18 +22,18 @@ pub fn new() Self {
         .tiles = [_]u8{0} ** SIZE ** SIZE,
         .taken = [1]u32{0} ** (Piece.Kind.COUNT * Player.COUNT),
     };
-    // for (0..8) |file| {
-    //     self.set(.{ .rank = 1, .file = file }, .{ .kind = .pawn, .player = .white });
-    //     self.set(.{ .rank = 6, .file = file }, .{ .kind = .pawn, .player = .black });
-    // }
+    for (0..8) |file| {
+        self.set(.{ .rank = 1, .file = file }, .{ .kind = .pawn, .player = .white });
+        self.set(.{ .rank = 6, .file = file }, .{ .kind = .pawn, .player = .black });
+    }
     for ([2]usize{ 0, 7 }, [2]Player{ .white, .black }) |rank, player| {
         self.set(.{ .rank = rank, .file = 0 }, .{ .kind = .rook, .player = player });
-        // self.set(.{ .rank = rank, .file = 1 }, .{ .kind = .knight, .player = player });
-        // self.set(.{ .rank = rank, .file = 2 }, .{ .kind = .bishop, .player = player });
+        self.set(.{ .rank = rank, .file = 1 }, .{ .kind = .knight, .player = player });
+        self.set(.{ .rank = rank, .file = 2 }, .{ .kind = .bishop, .player = player });
         self.set(.{ .rank = rank, .file = 4 }, .{ .kind = .king, .player = player });
-        // self.set(.{ .rank = rank, .file = 3 }, .{ .kind = .queen, .player = player });
-        // self.set(.{ .rank = rank, .file = 5 }, .{ .kind = .bishop, .player = player });
-        // self.set(.{ .rank = rank, .file = 6 }, .{ .kind = .knight, .player = player });
+        self.set(.{ .rank = rank, .file = 3 }, .{ .kind = .queen, .player = player });
+        self.set(.{ .rank = rank, .file = 5 }, .{ .kind = .bishop, .player = player });
+        self.set(.{ .rank = rank, .file = 6 }, .{ .kind = .knight, .player = player });
         self.set(.{ .rank = rank, .file = 7 }, .{ .kind = .rook, .player = player });
     }
 
