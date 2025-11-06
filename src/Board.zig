@@ -13,13 +13,31 @@ const AvailableMoves = moves.AvailableMoves;
 pub const SIZE: usize = 8;
 pub const MAX_PIECE_COUNT: usize = SIZE * 2 * Player.COUNT;
 
-tiles: [SIZE * SIZE]u8,
+tiles: [SIZE * SIZE]TileEntry,
 // TODO: Move to `State`
 taken: [Piece.Kind.COUNT * Player.COUNT]u32,
 
+// TODO: Make better
+const TileEntry = packed struct(u5) {
+    // TODO: Rename
+    kind: enum(u1) { empty, full },
+    data: packed union {
+        empty: void,
+        full: packed struct(u4) {
+            kind: Piece.Kind,
+            player: Player,
+        },
+    },
+
+    const empty = @This(){
+        .kind = .empty,
+        .data = .{ .empty = {} },
+    };
+};
+
 pub fn new() Self {
     var self = Self{
-        .tiles = [_]u8{0} ** SIZE ** SIZE,
+        .tiles = [_]TileEntry{.empty} ** SIZE ** SIZE,
         .taken = [1]u32{0} ** (Piece.Kind.COUNT * Player.COUNT),
     };
     for (0..8) |file| {
@@ -44,22 +62,36 @@ pub fn get(self: *const Self, tile: Tile) ?Piece {
     assert(tile.rank < SIZE);
     assert(tile.file < SIZE);
 
-    const value = self.tiles[tile.rank * SIZE + tile.file];
-    if (value == 0) {
-        return null;
+    const entry = self.tiles[tile.rank * SIZE + tile.file];
+
+    switch (entry.kind) {
+        .empty => return null,
+        .full => {
+            const full = entry.data.full;
+            return Piece{
+                .kind = full.kind,
+                .player = full.player,
+            };
+        },
     }
-    return Piece.fromInt(value - 1);
 }
 
 pub fn set(self: *Self, tile: Tile, piece: ?Piece) void {
     assert(tile.rank < SIZE);
     assert(tile.file < SIZE);
 
-    const value = if (piece) |piece_unwrapped|
-        piece_unwrapped.toInt() + 1
+    const entry = if (piece) |piece_unwrapped|
+        TileEntry{
+            .kind = .full,
+            .data = .{ .full = .{
+                .kind = piece_unwrapped.kind,
+                .player = piece_unwrapped.player,
+            } },
+        }
     else
-        0;
-    self.tiles[tile.rank * SIZE + tile.file] = value;
+        TileEntry.empty;
+
+    self.tiles[tile.rank * SIZE + tile.file] = entry;
 }
 
 pub fn getTaken(self: *const Self, piece: Piece) u32 {
