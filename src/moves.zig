@@ -56,7 +56,7 @@ pub const AvailableMoves = struct {
     }
 
     fn checkAllows(self: *Self, piece: Piece, move: Move) bool {
-        if (self.ignore_check or !self.board.isCheck(piece.player)) {
+        if (self.ignore_check or !self.board.isPlayerInCheck(piece.player)) {
             return true;
         }
 
@@ -65,7 +65,7 @@ pub const AvailableMoves = struct {
         @memcpy(&board.tiles, &self.board.tiles);
         board.applyMove(self.origin, move);
 
-        return !board.isCheck(piece.player);
+        return !board.isPlayerInCheck(piece.player);
     }
 
     fn tryApplyRule(self: *Self, rule: MoveRule, piece: Piece) ?Move {
@@ -227,10 +227,13 @@ pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
                     .home_rank = 0,
                     .file = 4,
                     .not_check = true,
+                    .not_attacked = &[_]Offset{
+                        .{ .real = .{ .rank = 0, .file = 1 } },
+                        .{ .real = .{ .rank = 0, .file = 2 } },
+                    },
                 },
-                // TODO: King does not finish in square which is attacked
-                // TODO: King does not pass square which is attacked
-                // TODO: (LATER) has never moved (king or rook)
+                // TODO: (LATER) has never moved (king or rook) requires
+                // tracking and storing piece movements (or movement count)
             },
             // Castling (queenside)
             .{
@@ -246,6 +249,11 @@ pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
                     .file = 4,
                     .not_check = true,
                     .free = .{ .real = .{ .rank = 0, .file = -1 } },
+                    .not_attacked = &[_]Offset{
+                        .{ .real = .{ .rank = 0, .file = -1 } },
+                        .{ .real = .{ .rank = 0, .file = -2 } },
+                        .{ .real = .{ .rank = 0, .file = -3 } },
+                    },
                 },
             },
         },
@@ -301,7 +309,10 @@ const Requirement = struct {
     /// Similar to `MoveRule.position.line`.
     free: ?Offset = null,
     /// If `true`, rule is invalid while in check.
+    // TODO: Use `not_attacked` with 0 offset instead
     not_check: bool = false,
+    // TODO: Document
+    not_attacked: []const Offset = &[0]Offset{},
 
     // ...also possible to add a fn pointer field for any custom behavior
     // (eg. castling).
@@ -319,6 +330,7 @@ const Requirement = struct {
             self.isFileSatisfied(context) and
             self.isFreeSatisfied(context) and
             self.isNotCheckSatisfied(context) and
+            self.isNotAttackedSatisfied(context) and
             self.isMoveAltSatisfied(context);
     }
 
@@ -375,7 +387,28 @@ const Requirement = struct {
             return true;
         }
 
-        return !context.board.isCheck(context.piece.player);
+        return !context.board.isPlayerInCheck(context.piece.player);
+    }
+
+    fn isNotAttackedSatisfied(self: *const Self, context: Context) bool {
+        if (!self.not_check) {
+            return true;
+        }
+
+        if (context.ignore_check) {
+            return true;
+        }
+
+        for (self.not_attacked) |offset| {
+            const target = offset.applyTo(context.origin, context.piece) orelse
+                continue;
+
+            if (context.board.isPlayerAttackedAt(context.piece.player, target)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     fn isMoveAltSatisfied(self: *const Self, context: Context) bool {
@@ -411,6 +444,8 @@ const Requirement = struct {
         piece: Piece,
         origin: Tile,
         destination: Tile,
+        // TODO: Rename `ignore_attacked` or something.
+        // And in `AvailableMoves` as well.
         ignore_check: bool,
         rule: MoveRule,
 

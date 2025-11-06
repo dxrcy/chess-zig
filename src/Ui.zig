@@ -171,7 +171,7 @@ pub fn render(self: *Self, state: *const State) void {
         },
 
         .play => |player| {
-            if (state.board.isCheck(player)) {
+            if (state.board.isPlayerInCheck(player)) {
                 const king = state.board.getKing(player);
                 self.renderRectSolid(getTileRect(king), .{
                     .bg = .white,

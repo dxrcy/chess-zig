@@ -22,18 +22,18 @@ pub fn new() Self {
         .tiles = [_]u8{0} ** SIZE ** SIZE,
         .taken = [1]u32{0} ** (Piece.Kind.COUNT * Player.COUNT),
     };
-    for (0..8) |file| {
-        self.set(.{ .rank = 1, .file = file }, .{ .kind = .pawn, .player = .white });
-        self.set(.{ .rank = 6, .file = file }, .{ .kind = .pawn, .player = .black });
-    }
+    // for (0..8) |file| {
+    //     self.set(.{ .rank = 1, .file = file }, .{ .kind = .pawn, .player = .white });
+    //     self.set(.{ .rank = 6, .file = file }, .{ .kind = .pawn, .player = .black });
+    // }
     for ([2]usize{ 0, 7 }, [2]Player{ .white, .black }) |rank, player| {
         self.set(.{ .rank = rank, .file = 0 }, .{ .kind = .rook, .player = player });
-        self.set(.{ .rank = rank, .file = 1 }, .{ .kind = .knight, .player = player });
-        self.set(.{ .rank = rank, .file = 2 }, .{ .kind = .bishop, .player = player });
+        // self.set(.{ .rank = rank, .file = 1 }, .{ .kind = .knight, .player = player });
+        // self.set(.{ .rank = rank, .file = 2 }, .{ .kind = .bishop, .player = player });
         self.set(.{ .rank = rank, .file = 4 }, .{ .kind = .king, .player = player });
-        self.set(.{ .rank = rank, .file = 3 }, .{ .kind = .queen, .player = player });
-        self.set(.{ .rank = rank, .file = 5 }, .{ .kind = .bishop, .player = player });
-        self.set(.{ .rank = rank, .file = 6 }, .{ .kind = .knight, .player = player });
+        // self.set(.{ .rank = rank, .file = 3 }, .{ .kind = .queen, .player = player });
+        // self.set(.{ .rank = rank, .file = 5 }, .{ .kind = .bishop, .player = player });
+        // self.set(.{ .rank = rank, .file = 6 }, .{ .kind = .knight, .player = player });
         self.set(.{ .rank = rank, .file = 7 }, .{ .kind = .rook, .player = player });
     }
 
@@ -101,9 +101,7 @@ pub fn getKing(self: *const Self, player: Player) Tile {
     }) orelse unreachable;
 }
 
-pub fn isCheck(self: *const Self, player: Player) bool {
-    const king = self.getKing(player);
-
+pub fn isPlayerAttackedAt(self: *const Self, player: Player, target: Tile) bool {
     for (0..SIZE) |rank| {
         for (0..SIZE) |file| {
             const tile = Tile{ .rank = rank, .file = file };
@@ -117,13 +115,17 @@ pub fn isCheck(self: *const Self, player: Player) bool {
             var available_moves = AvailableMoves.new(self, tile, true);
             while (available_moves.next()) |available| {
                 const take = available.take orelse available.destination;
-                if (take.eql(king)) {
+                if (take.eql(target)) {
                     return true;
                 }
             }
         }
     }
     return false;
+}
+
+pub fn isPlayerInCheck(self: *const Self, player: Player) bool {
+    return self.isPlayerAttackedAt(player, self.getKing(player));
 }
 
 pub fn applyMove(self: *Self, origin: Tile, move: Move) void {
