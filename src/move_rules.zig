@@ -95,8 +95,6 @@ pub const RULES = &[_][]const MoveRule{
                     .{ .absolute = .{ .rank = 0, .file = 2 } },
                 },
             },
-            // TODO: (LATER) has never moved (king or rook) requires
-            // tracking and storing piece movements (or movement count)
         },
         // Castling (queenside)
         .{

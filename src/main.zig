@@ -68,6 +68,10 @@ pub fn main() !void {
                 state.toggleSelection(true);
             },
 
+            'p' => {
+                ui.show_debug ^= true;
+            },
+
             else => {},
         }
     }

@@ -22,6 +22,7 @@ terminal: Terminal,
 frames: [2]Frame,
 current_frame: u1,
 ascii: bool,
+show_debug: bool,
 
 pub const tile_size = struct {
     pub const WIDTH: usize = Piece.WIDTH + PADDING_LEFT + PADDING_RIGHT;
@@ -52,6 +53,7 @@ pub fn new(ascii: bool) Self {
         .frames = [1]Frame{Frame.new()} ** 2,
         .current_frame = 0,
         .ascii = ascii,
+        .show_debug = false,
     };
 }
 
@@ -98,12 +100,6 @@ pub fn render(self: *Self, state: *const State) void {
     for (0..Board.SIZE) |rank| {
         for (0..Board.SIZE) |file| {
             const tile = Tile{ .rank = rank, .file = file };
-            if (state.board.hasChanged(tile)) {
-                self.renderRectSolid(getTileRect(tile), .{
-                    .char = ' ',
-                    .bg = .yellow,
-                });
-            }
             if (state.board.get(tile)) |piece| {
                 self.renderPiece(piece, tile, .{});
             }
@@ -246,13 +242,6 @@ pub fn render(self: *Self, state: *const State) void {
             });
         },
     }
-
-    // self.renderLargeText(&[_][]const u8{
-    //     "abcdefgh",
-    //     "ijklmnop",
-    //     "qrstuvwx",
-    //     "yz.,?!()",
-    // }, 7, 5);
 }
 
 fn renderTextLineNormal(
@@ -472,10 +461,13 @@ pub fn draw(self: *Self) void {
         _ = self.terminal.updateAttributes(.{});
 
         self.terminal.print("\r\x1b[K", .{});
-        self.terminal.print("{s}\t{}", .{
-            field.name,
-            @field(updates, field.name),
-        });
+
+        if (self.show_debug) {
+            self.terminal.print("{s}\t{}", .{
+                field.name,
+                @field(updates, field.name),
+            });
+        }
     }
 
     self.terminal.flush();
