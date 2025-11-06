@@ -183,12 +183,10 @@ pub const Requirement = struct {
 
     /// Whether a piece must take (`always`), must **not** take (`never`).
     take: ?enum { always, never } = null,
-    /// Rank index, counting from home side (black:7 = white:0 and vice-versa).
-    /// For a pawn's first move.
-    home_rank: ?usize = null,
-    // NOTE: Temporary solution for castling, until pieces remember their
-    // previous moves.
-    file: ?usize = null,
+    /// If `true`, rule is invalid if piece has ever moved (including moving
+    /// back to original tile).
+    /// For 2-tile pawn move and castling.
+    first_move: bool = false,
     /// Requires this tile to be free. Treats out-of-bounds tiles as free.
     /// For en-passant.
     /// Similar to `MoveRule.position.many`.
@@ -196,9 +194,6 @@ pub const Requirement = struct {
     /// If `true`, rule is invalid while in this piece is attacked by other
     /// player.
     not_attacked: []const Offset = &[0]Offset{},
-
-    // ...also possible to add a fn pointer field for any custom behavior
-    // (eg. castling).
 
     pub fn isSatisfied(self: *const Self, context: Context) bool {
         // Can never take/overwrite own piece
@@ -209,8 +204,7 @@ pub const Requirement = struct {
         }
 
         return self.isTakeSatisfied(context) and
-            self.isHomeRankSatisfied(context) and
-            self.isFileSatisfied(context) and
+            self.isFirstMoveSatisfied(context) and
             self.isFreeSatisfied(context) and
             self.isNotAttackedSatisfied(context) and
             self.isMoveAltSatisfied(context);
@@ -228,25 +222,11 @@ pub const Requirement = struct {
         };
     }
 
-    fn isHomeRankSatisfied(self: *const Self, context: Context) bool {
-        const home_rank = self.home_rank orelse {
+    fn isFirstMoveSatisfied(self: *const Self, context: Context) bool {
+        if (!self.first_move) {
             return true;
-        };
-
-        const actual_home_rank = if (context.piece.player == .white)
-            context.origin.rank
-        else
-            Board.SIZE - context.origin.rank - 1;
-
-        return home_rank == actual_home_rank;
-    }
-
-    fn isFileSatisfied(self: *const Self, context: Context) bool {
-        const file = self.file orelse {
-            return true;
-        };
-
-        return file == context.origin.file;
+        }
+        return !context.board.hasChanged(context.origin);
     }
 
     fn isFreeSatisfied(self: *const Self, context: Context) bool {

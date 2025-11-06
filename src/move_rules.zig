@@ -14,7 +14,7 @@ pub const RULES = &[_][]const MoveRule{
             .dest = .{ .single = .{ .advance = .{ .rank = 2, .file = 0 } } },
             .requirement = .{
                 .take = .never,
-                .home_rank = 1,
+                .first_move = true,
                 .free = .{ .advance = .{ .rank = 1, .file = 0 } },
             },
         },
@@ -88,8 +88,7 @@ pub const RULES = &[_][]const MoveRule{
             },
             .requirement = .{
                 .take = .never,
-                .home_rank = 0,
-                .file = 4,
+                .first_move = true,
                 .not_attacked = &[_]Offset{
                     .{ .absolute = .{ .rank = 0, .file = 0 } },
                     .{ .absolute = .{ .rank = 0, .file = 1 } },
@@ -109,8 +108,7 @@ pub const RULES = &[_][]const MoveRule{
             },
             .requirement = .{
                 .take = .never,
-                .home_rank = 0,
-                .file = 4,
+                .first_move = true,
                 .free = .{ .absolute = .{ .rank = 0, .file = -1 } },
                 .not_attacked = &[_]Offset{
                     .{ .absolute = .{ .rank = 0, .file = 0 } },
