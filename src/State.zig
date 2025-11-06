@@ -8,6 +8,7 @@ pub const Tile = Board.Tile;
 pub const Piece = Board.Piece;
 
 const moves = @import("moves.zig");
+const Move = moves.Move;
 
 status: Status,
 board: Board,
@@ -112,14 +113,7 @@ pub fn toggleSelection(self: *Self, allow_invalid: bool) void {
         return;
     assert(move.destination.eql(self.focus));
 
-    if (move.take) |take| {
-        const piece_taken = self.board.get(take) orelse unreachable;
-        self.board.addTaken(piece_taken);
-        self.board.set(take, null);
-    }
-
-    self.board.set(self.focus, piece);
-    self.board.set(selected, null);
+    self.board.applyMove(selected, move);
     self.selected = null;
 
     if (!self.updateStatus()) {
@@ -144,7 +138,7 @@ fn updateStatus(self: *Self) bool {
     return false;
 }
 
-fn getAvailableMove(self: *const Self, origin: Tile, destination: Tile) ?moves.Move {
+fn getAvailableMove(self: *const Self, origin: Tile, destination: Tile) ?Move {
     var available_moves = self.board.getAvailableMoves(origin);
     while (available_moves.next()) |available| {
         if (available.destination.eql(destination)) {

@@ -7,11 +7,14 @@ const State = @import("State.zig");
 const Player = State.Player;
 
 const moves = @import("moves.zig");
+const Move = moves.Move;
+const AvailableMoves = moves.AvailableMoves;
 
 pub const SIZE: usize = 8;
 pub const MAX_PIECE_COUNT: usize = SIZE * 2 * Player.COUNT;
 
 tiles: [SIZE * SIZE]u8,
+// TODO: Move to `State`
 taken: [Piece.Kind.COUNT * Player.COUNT]u32,
 
 pub fn new() Self {
@@ -67,17 +70,74 @@ pub fn addTaken(self: *Self, piece: Piece) void {
     self.taken[piece.toInt()] += 1;
 }
 
-pub fn isPieceAlive(self: *const Self, target: Piece) bool {
+// TODO: Create iterator for pieces/tiles
+
+pub fn getTileOfFirst(self: *const Self, target: Piece) ?Tile {
     for (0..SIZE) |rank| {
         for (0..SIZE) |file| {
-            const piece = self.get(.{ .rank = rank, .file = file }) orelse
+            const tile = Tile{ .rank = rank, .file = file };
+            const piece = self.get(tile) orelse
                 continue;
             if (piece.eql(target)) {
-                return true;
+                return tile;
+            }
+        }
+    }
+    return null;
+}
+
+// TODO: Remove and inline
+pub fn isPieceAlive(self: *const Self, target: Piece) bool {
+    return self.getTileOfFirst(target) != null;
+}
+
+pub fn getAvailableMoves(board: *const Self, origin: Tile) AvailableMoves {
+    return AvailableMoves.new(board, origin, false);
+}
+
+pub fn getKing(self: *const Self, player: Player) Tile {
+    return self.getTileOfFirst(.{
+        .kind = .king,
+        .player = player,
+    }) orelse unreachable;
+}
+
+pub fn isCheck(self: *const Self, player: Player) bool {
+    const king = self.getKing(player);
+
+    for (0..SIZE) |rank| {
+        for (0..SIZE) |file| {
+            const tile = Tile{ .rank = rank, .file = file };
+
+            const piece = self.get(tile) orelse
+                continue;
+            if (piece.player != player.flip()) {
+                continue;
+            }
+
+            var available_moves = AvailableMoves.new(self, tile, true);
+            while (available_moves.next()) |available| {
+                const take = available.take orelse available.destination;
+                if (take.eql(king)) {
+                    return true;
+                }
             }
         }
     }
     return false;
+}
+
+pub fn applyMove(self: *Self, origin: Tile, move: Move) void {
+    if (move.take) |take| {
+        const piece_taken = self.get(take) orelse unreachable;
+        self.addTaken(piece_taken);
+        self.set(take, null);
+    }
+
+    const piece = self.get(origin) orelse unreachable;
+
+    self.set(move.destination, piece);
+    self.set(origin, null);
 }
 
 pub const Tile = struct {
@@ -151,7 +211,3 @@ pub const Piece = struct {
             @intFromEnum(self.player) * Kind.COUNT;
     }
 };
-
-pub fn getAvailableMoves(board: *const Self, origin: Tile) moves.AvailableMoves {
-    return moves.AvailableMoves.new(board, origin);
-}

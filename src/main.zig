@@ -62,7 +62,7 @@ pub fn main() !void {
                     player.* = player.flip();
                     state.selected = null;
                 },
-                else => unreachable,
+                else => {},
             },
             'y' => if (state.status == .play) {
                 state.toggleSelection(true);

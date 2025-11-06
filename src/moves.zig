@@ -15,13 +15,16 @@ pub const AvailableMoves = struct {
 
     board: *const Board,
     origin: Tile,
+    ignore_check: bool,
+
     index: usize,
     line_index: usize,
 
-    pub fn new(board: *const Board, origin: Tile) Self {
+    pub fn new(board: *const Board, origin: Tile, ignore_check: bool) Self {
         return Self{
             .board = board,
             .origin = origin,
+            .ignore_check = ignore_check,
             .index = 0,
             .line_index = 0,
         };
@@ -34,11 +37,29 @@ pub const AvailableMoves = struct {
 
         while (self.index < rules.len) {
             const rule = rules[self.index];
-            if (self.tryApplyRule(rule, piece)) |move| {
-                return move;
+
+            const move = self.tryApplyRule(rule, piece) orelse {
+                continue;
+            };
+            if (!self.checkAllows(piece, move)) {
+                continue;
             }
+            return move;
         }
         return null;
+    }
+
+    fn checkAllows(self: *Self, piece: Piece, move: Move) bool {
+        if (self.ignore_check or !self.board.isCheck(piece.player)) {
+            return true;
+        }
+
+        // PERF: Could reuse board if we really care
+        var board = Board.new();
+        @memcpy(&board.tiles, &self.board.tiles);
+        board.applyMove(self.origin, move);
+
+        return !board.isCheck(piece.player);
     }
 
     fn tryApplyRule(self: *Self, rule: MoveRule, piece: Piece) ?Move {
@@ -97,6 +118,7 @@ pub const AvailableMoves = struct {
             .piece = piece,
             .origin = self.origin,
             .destination = destination,
+            .ignore_check = self.ignore_check,
             .rule = rule,
         };
 
@@ -270,6 +292,7 @@ const Requirement = struct {
         piece: Piece,
         origin: Tile,
         destination: Tile,
+        ignore_check: bool,
         rule: MoveRule,
 
         pub fn willTake(self: *const Context) enum { invalid, take, no_take } {

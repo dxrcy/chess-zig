@@ -171,6 +171,19 @@ pub fn render(self: *Self, state: *const State) void {
         },
 
         .play => |player| {
+            if (state.board.isCheck(player)) {
+                const king = state.board.getKing(player);
+                self.renderRectSolid(getTileRect(king), .{
+                    .bg = .white,
+                });
+                self.renderPiece(.{
+                    .kind = .king,
+                    .player = player,
+                }, king, .{
+                    .fg = if (player == .white) .cyan else .red,
+                });
+            }
+
             // Selected, available moves
             if (state.selected) |selected| {
                 var available_moves = state.board.getAvailableMoves(selected);
@@ -202,6 +215,7 @@ pub fn render(self: *Self, state: *const State) void {
                 }
 
                 self.renderRectSolid(getTileRect(selected), .{
+                    // TODO: Extract this ternary as a function
                     .bg = if (player == .white) .cyan else .red,
                 });
 
