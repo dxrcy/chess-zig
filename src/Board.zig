@@ -239,8 +239,7 @@ pub const Piece = struct {
     pub const HEIGHT: usize = 3;
     pub const WIDTH: usize = 3;
 
-    /// Returns `HEIGHT*WIDTH` ASCII representation of `self`.
-    pub fn string(self: Piece) []const u8 {
+    pub fn string(self: Piece) *const [HEIGHT * WIDTH]u8 {
         return switch (self.kind) {
             .pawn =>
             \\ _ (_)/_\
