@@ -98,6 +98,12 @@ pub fn render(self: *Self, state: *const State) void {
     for (0..Board.SIZE) |rank| {
         for (0..Board.SIZE) |file| {
             const tile = Tile{ .rank = rank, .file = file };
+            if (state.board.hasChanged(tile)) {
+                self.renderRectSolid(getTileRect(tile), .{
+                    .char = ' ',
+                    .bg = .yellow,
+                });
+            }
             if (state.board.get(tile)) |piece| {
                 self.renderPiece(piece, tile, .{});
             }

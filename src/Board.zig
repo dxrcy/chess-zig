@@ -18,12 +18,13 @@ tiles: [SIZE * SIZE]TileEntry,
 taken: [Piece.Kind.COUNT * Player.COUNT]u32,
 
 // TODO: Make better
-const TileEntry = packed struct(u5) {
+const TileEntry = packed struct(u6) {
     // TODO: Rename
     kind: enum(u1) { empty, full },
     data: packed union {
         empty: void,
-        full: packed struct(u4) {
+        full: packed struct(u5) {
+            changed: bool,
             kind: Piece.Kind,
             player: Player,
         },
@@ -40,6 +41,7 @@ pub fn new() Self {
         .tiles = [_]TileEntry{.empty} ** SIZE ** SIZE,
         .taken = [1]u32{0} ** (Piece.Kind.COUNT * Player.COUNT),
     };
+
     for (0..8) |file| {
         self.set(.{ .rank = 1, .file = file }, .{ .kind = .pawn, .player = .white });
         self.set(.{ .rank = 6, .file = file }, .{ .kind = .pawn, .player = .black });
@@ -53,6 +55,16 @@ pub fn new() Self {
         self.set(.{ .rank = rank, .file = 5 }, .{ .kind = .bishop, .player = player });
         self.set(.{ .rank = rank, .file = 6 }, .{ .kind = .knight, .player = player });
         self.set(.{ .rank = rank, .file = 7 }, .{ .kind = .rook, .player = player });
+    }
+
+    for (0..SIZE * SIZE) |i| {
+        switch (self.tiles[i].kind) {
+            .full => {
+                var full = &self.tiles[i].data.full;
+                full.changed = false;
+            },
+            else => {},
+        }
     }
 
     return self;
@@ -84,6 +96,7 @@ pub fn set(self: *Self, tile: Tile, piece: ?Piece) void {
         TileEntry{
             .kind = .full,
             .data = .{ .full = .{
+                .changed = true,
                 .kind = piece_unwrapped.kind,
                 .player = piece_unwrapped.player,
             } },
@@ -92,6 +105,21 @@ pub fn set(self: *Self, tile: Tile, piece: ?Piece) void {
         TileEntry.empty;
 
     self.tiles[tile.rank * SIZE + tile.file] = entry;
+}
+
+pub fn hasChanged(self: *const Self, tile: Tile) bool {
+    assert(tile.rank < SIZE);
+    assert(tile.file < SIZE);
+
+    const entry = self.tiles[tile.rank * SIZE + tile.file];
+
+    switch (entry.kind) {
+        .empty => return false,
+        .full => {
+            const full = entry.data.full;
+            return full.changed;
+        },
+    }
 }
 
 pub fn getTaken(self: *const Self, piece: Piece) u32 {
