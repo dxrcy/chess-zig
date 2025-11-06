@@ -69,7 +69,7 @@ pub const AvailableMoves = struct {
     }
 
     fn tryApplyRule(self: *Self, rule: MoveRule, piece: Piece) ?Move {
-        switch (rule.position) {
+        switch (rule.dest) {
             .offset => |offset| {
                 self.updateIndex();
 
@@ -151,7 +151,7 @@ pub const AvailableMoves = struct {
 };
 
 pub const MoveRule = struct {
-    position: union(enum) {
+    dest: union(enum) {
         offset: Offset,
         line: RealOffset,
     },
@@ -172,11 +172,11 @@ pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
     return switch (piece) {
         .pawn => &[_]MoveRule{
             .{
-                .position = .{ .offset = .{ .advance = .{ .rank = 1, .file = 0 } } },
+                .dest = .{ .offset = .{ .advance = .{ .rank = 1, .file = 0 } } },
                 .requirement = .{ .take = .never },
             },
             .{
-                .position = .{ .offset = .{ .advance = .{ .rank = 2, .file = 0 } } },
+                .dest = .{ .offset = .{ .advance = .{ .rank = 2, .file = 0 } } },
                 .requirement = .{
                     .take = .never,
                     .home_rank = 1,
@@ -184,79 +184,83 @@ pub fn getMoveRules(piece: Piece.Kind) []const MoveRule {
                 },
             },
             .{
-                .position = .{ .offset = .{ .advance = .{ .rank = 1, .file = -1 } } },
+                .dest = .{ .offset = .{ .advance = .{ .rank = 1, .file = -1 } } },
                 .requirement = .{ .take = .always },
             },
             .{
-                .position = .{ .offset = .{ .advance = .{ .rank = 1, .file = 1 } } },
+                .dest = .{ .offset = .{ .advance = .{ .rank = 1, .file = 1 } } },
                 .requirement = .{ .take = .always },
             },
             .{
-                .position = .{ .offset = .{ .advance = .{ .rank = 1, .file = -1 } } },
+                .dest = .{ .offset = .{ .advance = .{ .rank = 1, .file = -1 } } },
                 .take_alt = .{ .real = .{ .rank = 0, .file = -1 } },
                 .requirement = .{ .take = .always },
             },
             .{
-                .position = .{ .offset = .{ .advance = .{ .rank = 1, .file = 1 } } },
+                .dest = .{ .offset = .{ .advance = .{ .rank = 1, .file = 1 } } },
                 .take_alt = .{ .real = .{ .rank = 0, .file = 1 } },
                 .requirement = .{ .take = .always },
             },
         },
         .knight => &[_]MoveRule{
-            .{ .position = .{ .offset = .{ .real = .{ .rank = -1, .file = -2 } } } },
-            .{ .position = .{ .offset = .{ .real = .{ .rank = -2, .file = -1 } } } },
-            .{ .position = .{ .offset = .{ .real = .{ .rank = -1, .file = 2 } } } },
-            .{ .position = .{ .offset = .{ .real = .{ .rank = -2, .file = 1 } } } },
-            .{ .position = .{ .offset = .{ .real = .{ .rank = 1, .file = -2 } } } },
-            .{ .position = .{ .offset = .{ .real = .{ .rank = 2, .file = -1 } } } },
-            .{ .position = .{ .offset = .{ .real = .{ .rank = 1, .file = 2 } } } },
-            .{ .position = .{ .offset = .{ .real = .{ .rank = 2, .file = 1 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = -1, .file = -2 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = -2, .file = -1 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = -1, .file = 2 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = -2, .file = 1 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = 1, .file = -2 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = 2, .file = -1 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = 1, .file = 2 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = 2, .file = 1 } } } },
         },
         .king => &[_]MoveRule{
-            .{ .position = .{ .offset = .{ .real = .{ .rank = -1, .file = -1 } } } },
-            .{ .position = .{ .offset = .{ .real = .{ .rank = -1, .file = 0 } } } },
-            .{ .position = .{ .offset = .{ .real = .{ .rank = -1, .file = 1 } } } },
-            .{ .position = .{ .offset = .{ .real = .{ .rank = 0, .file = -1 } } } },
-            .{ .position = .{ .offset = .{ .real = .{ .rank = 0, .file = 1 } } } },
-            .{ .position = .{ .offset = .{ .real = .{ .rank = 1, .file = -1 } } } },
-            .{ .position = .{ .offset = .{ .real = .{ .rank = 1, .file = 0 } } } },
-            .{ .position = .{ .offset = .{ .real = .{ .rank = 1, .file = 1 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = -1, .file = -1 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = -1, .file = 0 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = -1, .file = 1 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = 0, .file = -1 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = 0, .file = 1 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = 1, .file = -1 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = 1, .file = 0 } } } },
+            .{ .dest = .{ .offset = .{ .real = .{ .rank = 1, .file = 1 } } } },
             .{
-                .position = .{ .offset = .{ .real = .{ .rank = 0, .file = -2 } } },
+                .dest = .{ .offset = .{ .real = .{ .rank = 0, .file = 2 } } },
                 .move_alt = .{
                     .kind = .rook,
-                    .origin = .{ .real = .{ .rank = 0, .file = -3 } },
-                    .destination = .{ .real = .{ .rank = 0, .file = -1 } },
+                    .origin = .{ .real = .{ .rank = 0, .file = 3 } },
+                    .destination = .{ .real = .{ .rank = 0, .file = 1 } },
                 },
-                // TODO: Line of sight
-                // TODO: Correct position
-                // TODO: Not in check
+                .requirement = .{
+                    .take = .never,
+                    .home_rank = 0,
+                    .file = 4,
+                    .not_check = true,
+                },
+                // TODO: Additional `free` square, for queenside (hard code)
                 // TODO: King does not finish in square which is attacked
                 // TODO: King does not pass square which is attacked
                 // TODO: (LATER) has never moved (king or rook)
             },
         },
         .rook => &[_]MoveRule{
-            .{ .position = .{ .line = .{ .rank = -1, .file = 0 } } },
-            .{ .position = .{ .line = .{ .rank = 1, .file = 0 } } },
-            .{ .position = .{ .line = .{ .rank = 0, .file = -1 } } },
-            .{ .position = .{ .line = .{ .rank = 0, .file = 1 } } },
+            .{ .dest = .{ .line = .{ .rank = -1, .file = 0 } } },
+            .{ .dest = .{ .line = .{ .rank = 1, .file = 0 } } },
+            .{ .dest = .{ .line = .{ .rank = 0, .file = -1 } } },
+            .{ .dest = .{ .line = .{ .rank = 0, .file = 1 } } },
         },
         .bishop => &[_]MoveRule{
-            .{ .position = .{ .line = .{ .rank = -1, .file = -1 } } },
-            .{ .position = .{ .line = .{ .rank = -1, .file = 1 } } },
-            .{ .position = .{ .line = .{ .rank = 1, .file = -1 } } },
-            .{ .position = .{ .line = .{ .rank = 1, .file = 1 } } },
+            .{ .dest = .{ .line = .{ .rank = -1, .file = -1 } } },
+            .{ .dest = .{ .line = .{ .rank = -1, .file = 1 } } },
+            .{ .dest = .{ .line = .{ .rank = 1, .file = -1 } } },
+            .{ .dest = .{ .line = .{ .rank = 1, .file = 1 } } },
         },
         .queen => &[_]MoveRule{
-            .{ .position = .{ .line = .{ .rank = -1, .file = 0 } } },
-            .{ .position = .{ .line = .{ .rank = 1, .file = 0 } } },
-            .{ .position = .{ .line = .{ .rank = 0, .file = -1 } } },
-            .{ .position = .{ .line = .{ .rank = 0, .file = 1 } } },
-            .{ .position = .{ .line = .{ .rank = -1, .file = -1 } } },
-            .{ .position = .{ .line = .{ .rank = -1, .file = 1 } } },
-            .{ .position = .{ .line = .{ .rank = 1, .file = -1 } } },
-            .{ .position = .{ .line = .{ .rank = 1, .file = 1 } } },
+            .{ .dest = .{ .line = .{ .rank = -1, .file = 0 } } },
+            .{ .dest = .{ .line = .{ .rank = 1, .file = 0 } } },
+            .{ .dest = .{ .line = .{ .rank = 0, .file = -1 } } },
+            .{ .dest = .{ .line = .{ .rank = 0, .file = 1 } } },
+            .{ .dest = .{ .line = .{ .rank = -1, .file = -1 } } },
+            .{ .dest = .{ .line = .{ .rank = -1, .file = 1 } } },
+            .{ .dest = .{ .line = .{ .rank = 1, .file = -1 } } },
+            .{ .dest = .{ .line = .{ .rank = 1, .file = 1 } } },
         },
     };
 }
@@ -270,9 +274,15 @@ const Requirement = struct {
     /// Rank index, counting from home side (black:7 = white:0 and vice-versa).
     /// For a pawn's first move.
     home_rank: ?usize = null,
+    // NOTE: Temporary solution for castling, until pieces remember their
+    // previous moves.
+    file: ?usize = null,
     /// Requires this tile to be free. Treats out-of-bounds tiles as free.
+    /// For en-passant.
     /// Similar to `MoveRule.position.line`.
     free: ?Offset = null,
+    /// If `true`, rule is invalid while in check.
+    not_check: bool = false,
 
     // ...also possible to add a fn pointer field for any custom behavior
     // (eg. castling).
@@ -287,7 +297,9 @@ const Requirement = struct {
 
         return self.isTakeSatisfied(context) and
             self.isHomeRankSatisfied(context) and
+            self.isFileSatisfied(context) and
             self.isFreeSatisfied(context) and
+            self.isNotCheckSatisfied(context) and
             self.isMoveAltSatisfied(context);
     }
 
@@ -316,6 +328,14 @@ const Requirement = struct {
         return home_rank == actual_home_rank;
     }
 
+    fn isFileSatisfied(self: *const Self, context: Context) bool {
+        const file = self.file orelse {
+            return true;
+        };
+
+        return file == context.origin.file;
+    }
+
     fn isFreeSatisfied(self: *const Self, context: Context) bool {
         const free = self.free orelse {
             return true;
@@ -325,6 +345,18 @@ const Requirement = struct {
             return true;
         };
         return context.board.get(tile) == null;
+    }
+
+    fn isNotCheckSatisfied(self: *const Self, context: Context) bool {
+        if (!self.not_check) {
+            return true;
+        }
+
+        if (context.ignore_check) {
+            return true;
+        }
+
+        return !context.board.isCheck(context.piece.player);
     }
 
     fn isMoveAltSatisfied(self: *const Self, context: Context) bool {
