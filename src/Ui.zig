@@ -91,7 +91,7 @@ pub fn render(self: *Self, state: *const State) void {
             const tile = Tile{ .rank = rank, .file = file };
             self.renderRectSolid(getTileRect(tile), .{
                 .char = ' ',
-                .bg = if (tile.isEven()) .black else .bright_black,
+                .bg = if (tile.isEven()) .bright_black else .black,
             });
         }
     }
@@ -204,7 +204,7 @@ pub fn render(self: *Self, state: *const State) void {
                             continue;
 
                         self.renderPiece(piece, available.destination, .{
-                            .fg = if (available.destination.isEven()) .bright_black else .black,
+                            .fg = if (available.destination.isEven()) .black else .bright_black,
                         });
 
                         // Take indirect
