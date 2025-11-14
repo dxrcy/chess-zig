@@ -11,6 +11,7 @@ pub const Move = struct {
     destination: Tile,
     take: ?Tile,
     move_alt: ?MoveAlt,
+    mark_special: bool,
 
     const MoveAlt = struct {
         origin: Tile,
@@ -155,6 +156,7 @@ pub const AvailableMoves = struct {
             .destination = destination,
             .take = context.getTakeTile(),
             .move_alt = move_alt,
+            .mark_special = rule.mark_special,
         };
     }
 };
@@ -168,6 +170,8 @@ pub const MoveRule = struct {
     take_alt: ?Offset = null,
     /// If another piece of the same colour is moved (eg. in castling).
     move_alt: ?MoveAlt = null,
+    // TODO: Document
+    mark_special: bool = false,
     requirement: Requirement = .{},
 
     const MoveAlt = struct {
@@ -189,6 +193,8 @@ pub const Requirement = struct {
     /// also not moved before.
     /// For 2-tile pawn move and castling.
     first_move: bool = false,
+    // TODO: Document
+    take_special: bool = false,
     /// Requires this tile to be free. Treats out-of-bounds tiles as free.
     /// For en-passant.
     /// Similar to `MoveRule.position.many`.
@@ -207,6 +213,7 @@ pub const Requirement = struct {
 
         return self.isTakeSatisfied(context) and
             self.isFirstMoveSatisfied(context) and
+            self.isTakeSpecialSatisfied(context) and
             self.isFreeSatisfied(context) and
             self.isNotAttackedSatisfied(context) and
             self.isMoveAltSatisfied(context);
@@ -241,6 +248,24 @@ pub const Requirement = struct {
             }
         }
         return true;
+    }
+
+    fn isTakeSpecialSatisfied(self: *const Self, context: Context) bool {
+        if (!self.take_special) {
+            return true;
+        }
+        assert(self.take == .always);
+
+        const tile_take = context.getTakeTileUnchecked() orelse {
+            return false;
+        };
+        const piece_take = context.board.get(tile_take) orelse {
+            return false;
+        };
+        if (piece_take.player == context.piece.player) {
+            return false;
+        }
+        return context.board.isSpecial(tile_take);
     }
 
     fn isFreeSatisfied(self: *const Self, context: Context) bool {
@@ -333,7 +358,7 @@ pub const Requirement = struct {
 
         /// Returns `null` if tile is out-of-bounds.
         /// Does **NOT** check any status of piece-to-take.
-        fn getTakeTileUnchecked(self: *const Context) ?Tile {
+        pub fn getTakeTileUnchecked(self: *const Context) ?Tile {
             if (self.rule.take_alt) |take| {
                 return take.applyTo(self.origin, self.piece);
             }

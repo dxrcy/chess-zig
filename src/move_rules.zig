@@ -12,6 +12,7 @@ pub const RULES = &[_][]const MoveRule{
         // First move, 2 tiles
         .{
             .dest = .{ .single = .{ .advance = .{ .rank = 2, .file = 0 } } },
+            .mark_special = true,
             .requirement = .{
                 .take = .never,
                 .first_move = true,
@@ -31,12 +32,18 @@ pub const RULES = &[_][]const MoveRule{
         .{
             .dest = .{ .single = .{ .advance = .{ .rank = 1, .file = -1 } } },
             .take_alt = .{ .absolute = .{ .rank = 0, .file = -1 } },
-            .requirement = .{ .take = .always },
+            .requirement = .{
+                .take = .always,
+                .take_special = true,
+            },
         },
         .{
             .dest = .{ .single = .{ .advance = .{ .rank = 1, .file = 1 } } },
             .take_alt = .{ .absolute = .{ .rank = 0, .file = 1 } },
-            .requirement = .{ .take = .always },
+            .requirement = .{
+                .take = .always,
+                .take_special = true,
+            },
         },
     },
 

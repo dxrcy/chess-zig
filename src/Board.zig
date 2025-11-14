@@ -18,14 +18,17 @@ tiles: [SIZE * SIZE]TileEntry,
 taken: [Piece.Kind.COUNT * Player.COUNT]u32,
 
 // TODO: Make better
-const TileEntry = packed struct(u6) {
+// TODO: Document
+const TileEntry = packed struct(u7) {
     // TODO: Rename
     kind: enum(u1) { empty, full },
     data: packed union {
         empty: void,
-        full: packed struct(u5) {
-            changed: bool,
+        full: packed struct(u6) {
             piece: Piece,
+            changed: bool,
+            // TODO: Document
+            special: bool,
         },
     },
 
@@ -84,6 +87,11 @@ pub fn get(self: *const Self, tile: Tile) ?Piece {
 }
 
 pub fn set(self: *Self, tile: Tile, piece: ?Piece) void {
+    self.setInner(tile, piece, false);
+}
+
+// TODO: Make better
+pub fn setInner(self: *Self, tile: Tile, piece: ?Piece, special: bool) void {
     assert(tile.rank < SIZE);
     assert(tile.file < SIZE);
 
@@ -91,8 +99,9 @@ pub fn set(self: *Self, tile: Tile, piece: ?Piece) void {
         TileEntry{
             .kind = .full,
             .data = .{ .full = .{
-                .changed = true,
                 .piece = piece_unwrapped,
+                .changed = true,
+                .special = special,
             } },
         }
     else
@@ -109,10 +118,19 @@ pub fn hasChanged(self: *const Self, tile: Tile) bool {
 
     switch (entry.kind) {
         .empty => return false,
-        .full => {
-            const full = entry.data.full;
-            return full.changed;
-        },
+        .full => return entry.data.full.changed,
+    }
+}
+
+pub fn isSpecial(self: *const Self, tile: Tile) bool {
+    assert(tile.rank < SIZE);
+    assert(tile.file < SIZE);
+
+    const entry = self.tiles[tile.rank * SIZE + tile.file];
+
+    switch (entry.kind) {
+        .empty => return false,
+        .full => return entry.data.full.special,
     }
 }
 
@@ -190,15 +208,15 @@ pub fn applyMove(self: *Self, origin: Tile, move: Move) void {
     }
 
     if (move.move_alt) |move_alt| {
-        self.movePieceToEmpty(move_alt.origin, move_alt.destination);
+        self.movePieceToEmpty(move_alt.origin, move_alt.destination, false);
     }
 
-    self.movePieceToEmpty(origin, move.destination);
+    self.movePieceToEmpty(origin, move.destination, move.mark_special);
 }
 
-fn movePieceToEmpty(self: *Self, origin: Tile, destination: Tile) void {
+fn movePieceToEmpty(self: *Self, origin: Tile, destination: Tile, special: bool) void {
     const piece = self.get(origin) orelse unreachable;
-    self.set(destination, piece);
+    self.setInner(destination, piece, special);
     self.set(origin, null);
 }
 
