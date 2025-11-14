@@ -25,8 +25,7 @@ const TileEntry = packed struct(u6) {
         empty: void,
         full: packed struct(u5) {
             changed: bool,
-            kind: Piece.Kind,
-            player: Player,
+            piece: Piece,
         },
     },
 
@@ -79,11 +78,7 @@ pub fn get(self: *const Self, tile: Tile) ?Piece {
     switch (entry.kind) {
         .empty => return null,
         .full => {
-            const full = entry.data.full;
-            return Piece{
-                .kind = full.kind,
-                .player = full.player,
-            };
+            return entry.data.full.piece;
         },
     }
 }
@@ -97,8 +92,7 @@ pub fn set(self: *Self, tile: Tile, piece: ?Piece) void {
             .kind = .full,
             .data = .{ .full = .{
                 .changed = true,
-                .kind = piece_unwrapped.kind,
-                .player = piece_unwrapped.player,
+                .piece = piece_unwrapped,
             } },
         }
     else
@@ -221,7 +215,7 @@ pub const Tile = struct {
     }
 };
 
-pub const Piece = struct {
+pub const Piece = packed struct {
     kind: Kind,
     player: Player,
 
