@@ -185,6 +185,8 @@ pub const Requirement = struct {
     take: ?enum { always, never } = null,
     /// If `true`, rule is invalid if piece has ever moved (including moving
     /// back to original tile).
+    /// This includes any pieces moved by `MoveRule.move_alt`; they must have
+    /// also not moved before.
     /// For 2-tile pawn move and castling.
     first_move: bool = false,
     /// Requires this tile to be free. Treats out-of-bounds tiles as free.
@@ -226,7 +228,19 @@ pub const Requirement = struct {
         if (!self.first_move) {
             return true;
         }
-        return !context.board.hasChanged(context.origin);
+        if (context.board.hasChanged(context.origin)) {
+            return false;
+        }
+        if (context.rule.move_alt) |move_alt| {
+            const origin = move_alt.origin.applyTo(context.origin, context.piece) orelse {
+                // Out-of-bounds `move_alt` should be handled elsewhere
+                return true;
+            };
+            if (context.board.hasChanged(origin)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     fn isFreeSatisfied(self: *const Self, context: Context) bool {
